@@ -51,6 +51,37 @@ export const es = {
         "El modo Operador requiere Android — Apple no permite USB UVC.",
     },
   },
+  diagnostics: {
+    title: "DIAGNÓSTICO",
+    intro:
+      "Estado del runtime, la sesión y los módulos. Útil para mandarme una captura si algo no carga.",
+    sectionApp: "APLICACIÓN",
+    sectionDevice: "DISPOSITIVO",
+    sectionSession: "SESIÓN",
+    sectionDestinations: "DESTINOS ACTIVOS",
+    sectionChat: "CHAT (KICK)",
+    sectionPermissions: "PERMISOS",
+    sectionModules: "MÓDULOS NATIVOS",
+    runtimeExpoGo: "Expo Go",
+    runtimeDevClient: "Dev client (custom)",
+    runtimeBare: "Bare runtime",
+    runtimeUnknown: "Desconocido",
+    yes: "Sí",
+    no: "No",
+    none: "Ninguno",
+    notSet: "no configurado",
+    keyPresent: "clave guardada",
+    keyMissing: "sin clave",
+    modulesPhase0:
+      "Fase 0 / Expo Go — los módulos nativos (RTMP, captura USB UVC) cargan solo en el dev build.",
+    modulesDevClient:
+      "Dev client — RTMP y captura USB se cargan aquí. Detalles cuando aterricen en Fase 1+.",
+    actionsTitle: "ACCIONES",
+    actionClearDestinations: "BORRAR DESTINOS",
+    actionSignOut: "CERRAR SESIÓN",
+    actionCopyDebug: "COPIAR INFO DE DEPURACIÓN",
+    copied: "Copiado al portapapeles",
+  },
   destinations: {
     title: "DESTINOS",
     intro:

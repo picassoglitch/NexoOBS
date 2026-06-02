@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
 import { t } from "@/i18n";
 import { useSession } from "@/store/session.store";
 import { usePermissions } from "@/store/permissions.store";
@@ -78,9 +79,17 @@ export default function OperatorLive() {
           title={t("operator.title")}
           onBack={clearRole}
           right={
-            <Pressable onPress={signOut} hitSlop={8}>
-              <Text style={styles.signOutPill}>{t("common.signOut")}</Text>
-            </Pressable>
+            <View style={styles.headerRight}>
+              <Pressable
+                onPress={() => router.push("/diagnostics" as never)}
+                hitSlop={8}
+              >
+                <Text style={styles.gearTxt}>⚙</Text>
+              </Pressable>
+              <Pressable onPress={signOut} hitSlop={8}>
+                <Text style={styles.signOutPill}>{t("common.signOut")}</Text>
+              </Pressable>
+            </View>
           }
         />
         {name && (
@@ -224,6 +233,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
     letterSpacing: 1.2,
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  gearTxt: {
+    color: BridgeColors.Primary,
+    fontSize: 18,
   },
   signOutPill: {
     color: BridgeColors.TextTertiary,

@@ -58,7 +58,19 @@ export default function StreamerHome() {
         contentContainerStyle={styles.body}
         showsVerticalScrollIndicator={false}
       >
-        <ScreenHeader title={t("streamer.title")} onBack={clearRole} />
+        <ScreenHeader
+          title={t("streamer.title")}
+          onBack={clearRole}
+          right={
+            <Pressable
+              onPress={() => router.push("/diagnostics" as never)}
+              hitSlop={8}
+              style={styles.gearBtn}
+            >
+              <Text style={styles.gearTxt}>⚙</Text>
+            </Pressable>
+          }
+        />
 
         {name && (
           <Text style={styles.greeting}>
@@ -274,6 +286,20 @@ const styles = StyleSheet.create({
     marginBottom: -2,
   },
   placeholderTxt: { color: BridgeColors.TextSecondary, fontSize: 12 },
+  gearBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: BridgeColors.Surface,
+    borderWidth: 1,
+    borderColor: BridgeColors.PrimarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  gearTxt: {
+    color: BridgeColors.Primary,
+    fontSize: 18,
+  },
   destSummary: {
     color: BridgeColors.TextPrimary,
     fontFamily: Mono.fontFamily,
