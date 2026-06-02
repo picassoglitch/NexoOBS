@@ -64,6 +64,7 @@ export const es = {
     sectionChat: "CHAT (KICK)",
     sectionPermissions: "PERMISOS",
     sectionModules: "MÓDULOS NATIVOS",
+    sectionUvc: "CÁMARA USB (OSMO / UVC)",
     runtimeExpoGo: "Expo Go",
     runtimeDevClient: "Dev client (custom)",
     runtimeStandalone: "Standalone (app store)",
@@ -85,6 +86,25 @@ export const es = {
     actionSignOut: "CERRAR SESIÓN",
     actionCopyDebug: "COPIAR INFO DE DEPURACIÓN",
     copied: "Copiado al portapapeles",
+  },
+  osmo: {
+    headerDevClientRequired: "OSMO USB · REQUIERE DEV CLIENT",
+    headerNotConnected: "OSMO USB · NO CONECTADO",
+    reasonGeneric:
+      "El soporte USB UVC se carga solo en un dev client de Expo. Construye uno con `eas build --profile development --platform android`.",
+    notConnectedHint:
+      "Conecta tu Osmo Pocket 3 por USB-C. La app lo detecta automáticamente. En el Osmo, pon el modo de conexión USB en Webcam si la cuenta regresiva no termina en modo webcam.",
+    tapWake:
+      "Permiso concedido. Toca Wake Osmo para reclamar la interfaz UVC — el Osmo sale de la cuenta regresiva en cuanto la interfaz se reclama.",
+    tapGrantPermission:
+      "Toca Otorgar permiso USB. Android abrirá el diálogo del sistema; acéptalo para que la app hable con el dispositivo.",
+    grantPermission: "OTORGAR PERMISO USB",
+    wake: "WAKE OSMO (CLAIM UVC)",
+    release: "LIBERAR OSMO",
+    streaming: "Transmitiendo {w}x{h}@{fps} {fmt}{uvc}",
+    claimedStartingPreview:
+      "Interfaz reclamada — Osmo en modo webcam.{uvc} Iniciando preview…",
+    pumpError: "Error del pump: {message}",
   },
   destinations: {
     title: "DESTINOS",

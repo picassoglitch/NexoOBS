@@ -7,6 +7,7 @@ export { ChatOverlay } from "./components/ChatOverlay";
 export { GoLiveButton } from "./components/GoLiveButton";
 export { HealthBar } from "./components/HealthBar";
 export { MessageItem } from "./components/MessageItem";
+export { OsmoCard } from "./components/OsmoCard";
 export { QuickPill } from "./components/QuickPill";
 export { ScreenHeader } from "./components/ScreenHeader";
 export { Segmented } from "./components/Segmented";

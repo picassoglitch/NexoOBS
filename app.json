@@ -44,7 +44,8 @@
       "expo-asset",
       "expo-dev-client",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      "./modules/nexo-uvc-camera/app.plugin.js"
     ],
     "experiments": {
       "typedRoutes": true

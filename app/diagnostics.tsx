@@ -16,6 +16,7 @@ import { t } from "@/i18n";
 import { useSession } from "@/store/session.store";
 import { usePermissions } from "@/store/permissions.store";
 import { useChat } from "@/store/chat.store";
+import { useUsbCamera } from "@/hooks/useUsbCamera";
 import {
   enabledDestinationsList,
   useDestinations,
@@ -44,6 +45,7 @@ export default function DiagnosticsScreen() {
   const { permissions } = usePermissions();
   const { destinations, clearAll } = useDestinations();
   const { channel: kickChannel, status: kickStatus, error: kickError } = useChat();
+  const usb = useUsbCamera();
   const [copyHint, setCopyHint] = useState<string | null>(null);
 
   const enabled = enabledDestinationsList(destinations);
@@ -85,6 +87,24 @@ export default function DiagnosticsScreen() {
       })),
       chat: { kickChannel, kickStatus, kickError },
       permissions,
+      uvc: {
+        available: usb.available,
+        reason: usb.reason,
+        device: usb.device
+          ? {
+              vendorHex: usb.device.vendorHex,
+              productHex: usb.device.productHex,
+              productName: usb.device.productName,
+              isDji: usb.device.isDji,
+              permissionGranted: usb.device.permissionGranted,
+            }
+          : null,
+        initialized: usb.initialized,
+        uvcVersion: usb.initializeResult?.uvcVersion ?? null,
+        previewActive: usb.previewActive,
+        previewResult: usb.previewResult,
+        pumpError: usb.pumpError,
+      },
     };
     await Clipboard.setStringAsync(JSON.stringify(bundle, null, 2));
     setCopyHint(t("diagnostics.copied"));
@@ -200,6 +220,70 @@ export default function DiagnosticsScreen() {
               ? t("diagnostics.modulesPhase0")
               : t("diagnostics.modulesDevClient")}
           </Text>
+        </Section>
+
+        <Section title={t("diagnostics.sectionUvc")}>
+          <Row
+            label="available"
+            value={usb.available ? t("diagnostics.yes") : t("diagnostics.no")}
+            highlight={usb.available}
+          />
+          {!usb.available && usb.reason && (
+            <Row label="reason" value={usb.reason} />
+          )}
+          {usb.device ? (
+            <>
+              <Row
+                label="device"
+                value={
+                  usb.device.productName ??
+                  `${usb.device.vendorHex}/${usb.device.productHex}`
+                }
+                highlight
+              />
+              <Row
+                label="vid/pid"
+                value={`${usb.device.vendorHex}/${usb.device.productHex}`}
+                mono
+              />
+              <Row
+                label="is_dji"
+                value={usb.device.isDji ? t("diagnostics.yes") : t("diagnostics.no")}
+              />
+              <Row
+                label="permission"
+                value={
+                  usb.device.permissionGranted
+                    ? t("diagnostics.yes")
+                    : t("diagnostics.no")
+                }
+                highlight={usb.device.permissionGranted}
+              />
+            </>
+          ) : (
+            <Row label="device" value={t("diagnostics.none")} />
+          )}
+          <Row
+            label="initialized"
+            value={usb.initialized ? t("diagnostics.yes") : t("diagnostics.no")}
+            highlight={usb.initialized}
+          />
+          {usb.initializeResult?.uvcVersion && (
+            <Row label="uvc_version" value={usb.initializeResult.uvcVersion} />
+          )}
+          <Row
+            label="preview_active"
+            value={usb.previewActive ? t("diagnostics.yes") : t("diagnostics.no")}
+            highlight={usb.previewActive}
+          />
+          {usb.previewResult?.ok && (
+            <Row
+              label="negotiated"
+              value={`${usb.previewResult.width}x${usb.previewResult.height}@${usb.previewResult.fps} ${usb.previewResult.format}`}
+              mono
+            />
+          )}
+          {usb.pumpError && <Row label="pump_error" value={usb.pumpError} />}
         </Section>
 
         <Text style={styles.sectionLabel}>{t("diagnostics.actionsTitle")}</Text>

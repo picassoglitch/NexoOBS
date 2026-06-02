@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -13,12 +13,15 @@ import { router } from "expo-router";
 import { t } from "@/i18n";
 import { useSession } from "@/store/session.store";
 import { usePermissions } from "@/store/permissions.store";
+import { useUsbCamera } from "@/hooks/useUsbCamera";
+import { usbCamera } from "@/lib/usb-camera";
 import {
   BridgeColors,
   ChatDrawer,
   ChatOverlay,
   HealthBar,
   Mono,
+  OsmoCard,
   ScreenHeader,
 } from "@/ui";
 
@@ -36,25 +39,48 @@ export default function OperatorLive() {
   const isLandscape = width > height;
   const [isLive, setIsLive] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const usb = useUsbCamera();
 
   const canControlStream = permissions.streamControlAllowed;
 
+  // The Osmo preview takes over the full-bleed surface as soon as the UVC
+  // interface is claimed. Phone camera is the fallback before that.
+  const showOsmoPreview = usb.initialized;
+
+  // Auto-start the pump once we've claimed the interface and the preview
+  // view is mounted. Osmo enters webcam mode the instant claimInterface
+  // succeeds; this just makes the captured frames actually render.
+  useEffect(() => {
+    if (!usb.initialized || usb.previewActive) return;
+    void usb.startPreview(1280, 720, 30);
+  }, [usb.initialized, usb.previewActive, usb.startPreview]);
+
   const name = session?.fullName ?? session?.email?.split("@")[0] ?? null;
 
-  // Lazy-load CameraView so iOS / web (no UVC + Apple's USB block) doesn't
-  // try to negotiate before we even render.
+  // Lazy-load CameraView for the fallback path so iOS / web don't try to
+  // negotiate before render. Skip the require when we'll render the Osmo
+  // native view instead.
   const { CameraView, useCameraPermissions } = require("expo-camera") as
     typeof import("expo-camera");
   const [permission, requestPermission] = useCameraPermissions();
 
-  if (permission && !permission.granted && permission.canAskAgain) {
+  if (
+    !showOsmoPreview &&
+    permission &&
+    !permission.granted &&
+    permission.canAskAgain
+  ) {
     void requestPermission();
   }
 
+  const OsmoPreviewView = usbCamera.PreviewView;
+
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      {/* Full-bleed camera surface. */}
-      {permission?.granted ? (
+      {/* Full-bleed camera surface — Osmo when initialized, phone otherwise. */}
+      {showOsmoPreview && OsmoPreviewView ? (
+        <OsmoPreviewView style={StyleSheet.absoluteFill} />
+      ) : permission?.granted ? (
         <CameraView style={StyleSheet.absoluteFill} mode="video" facing="back" />
       ) : (
         <View style={[StyleSheet.absoluteFill, styles.permFallback]}>
@@ -100,8 +126,8 @@ export default function OperatorLive() {
         <View style={styles.sourceRow}>
           <Text style={styles.sourceLabel}>{t("operator.sourceLabel")}</Text>
           <Text style={styles.sourceValue}>
-            {Platform.OS === "ios"
-              ? t("values.phoneCam")
+            {showOsmoPreview
+              ? `OSMO·${usb.previewResult?.format ?? "UVC"}`
               : t("values.phoneCam")}
           </Text>
         </View>
@@ -118,12 +144,20 @@ export default function OperatorLive() {
         <HealthBar
           cells={[
             { label: t("operator.healthBitrate"), value: "—", highlight: "warn" },
-            { label: t("operator.healthFps"), value: "—" },
+            {
+              label: t("operator.healthFps"),
+              value: usb.previewActive ? String(usb.previewResult?.fps ?? "—") : "—",
+              highlight: usb.previewActive ? "good" : undefined,
+            },
             { label: t("operator.healthDrops"), value: "0", highlight: "good" },
             { label: t("operator.healthRtt"), value: "—" },
             { label: t("operator.healthBat"), value: "—" },
           ]}
         />
+
+        {/* Osmo capture controls — collapsed peek when initialized, full card
+            when permission/wake is needed. */}
+        <OsmoCard />
 
         <ChatOverlay onExpand={() => setChatOpen(true)} />
 
