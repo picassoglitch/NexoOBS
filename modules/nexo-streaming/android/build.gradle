@@ -22,17 +22,14 @@ android {
   }
 }
 
-repositories {
-  mavenCentral()
-  // RootEncoder is published via JitPack — pedroSG94/RootEncoder.
-  maven { url "https://jitpack.io" }
-}
+// Repositories intentionally NOT declared here — Expo SDK 54's
+// settings.gradle uses RepositoriesMode.FAIL_ON_PROJECT_REPOS, so any
+// `repositories { ... }` block at the project level fails the build.
+//
+// Phase 1.B wires RootEncoder (pedroSG94, JitPack). When that lands the
+// matching app.plugin.js will inject `maven { url 'https://jitpack.io' }`
+// into the root settings.gradle via withSettingsGradle().
 
 dependencies {
   implementation project(':expo-modules-core')
-
-  // pedroSG94/RootEncoder — phase 1 broadcaster. We use the v2 'library'
-  // artifact which carries the Camera2 + MediaCodec + RTMP/SRT publishers.
-  // Pin to a known-good release tag; bump deliberately.
-  implementation "com.github.pedroSG94.RootEncoder:library:2.7.6"
 }
