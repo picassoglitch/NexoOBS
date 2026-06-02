@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "Nexo-AI World",
+    "slug": "nexo-ai-world",
+    "version": "0.1.0",
+    "scheme": "nexoaiworld",
+    "orientation": "default",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nexoai.world",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Nexo-AI World uses the camera to preview and stream live video.",
+        "NSMicrophoneUsageDescription": "Nexo-AI World captures microphone audio for your live stream.",
+        "NSLocalNetworkUsageDescription": "Nexo-AI World connects to your local broadcast/ingest servers on your LAN."
+      }
+    },
+    "android": {
+      "package": "com.nexoai.world",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.WAKE_LOCK",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Nexo-AI World to access the camera",
+          "microphonePermission": "Allow Nexo-AI World to access the microphone",
+          "recordAudioAndroid": true
+        }
+      ],
+      "expo-asset",
+      "expo-dev-client",
+      "expo-secure-store",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {}
+    }
+  }
+}
