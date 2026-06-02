@@ -4,10 +4,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { t } from "@/i18n";
 import { useSession } from "@/store/session.store";
+import { useChat } from "@/store/chat.store";
 import {
   BridgeCard,
   BridgeColors,
   CameraPreview,
+  ChatDrawer,
   GoLiveButton,
   Mono,
   QuickPill,
@@ -26,7 +28,9 @@ import {
  */
 export default function StreamerHome() {
   const { session, clearRole, signOut } = useSession();
+  const { channel: kickChannel, status: kickStatus } = useChat();
   const [isLive, setIsLive] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const [perms, setPerms] = useState({
     chatReply: false,
     streamControl: true,
@@ -77,6 +81,20 @@ export default function StreamerHome() {
             value={t("values.noDestinations")}
             health="warn"
           />
+          <StatusChip
+            label={t("chips.chat")}
+            value={`KICK·${kickChannel.toUpperCase()}`}
+            health={
+              kickStatus === "open"
+                ? "good"
+                : kickStatus === "error"
+                  ? "bad"
+                  : kickStatus === "idle"
+                    ? "idle"
+                    : "warn"
+            }
+            onPress={() => setChatOpen(true)}
+          />
         </ScrollView>
 
         <Text style={styles.sectionLabel}>{t("streamer.sectionStream")}</Text>
@@ -126,7 +144,7 @@ export default function StreamerHome() {
         <View style={styles.pillsRow}>
           <QuickPill
             label={t("streamer.actChat")}
-            onPress={() => {}}
+            onPress={() => setChatOpen(true)}
             style={{ flex: 1 }}
           />
           <QuickPill
@@ -140,6 +158,8 @@ export default function StreamerHome() {
             style={{ flex: 1 }}
           />
         </View>
+
+        <ChatDrawer visible={chatOpen} onClose={() => setChatOpen(false)} />
 
         <View style={styles.footerRow}>
           <Pressable onPress={clearRole} style={styles.linkBtn}>

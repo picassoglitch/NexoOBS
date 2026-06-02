@@ -13,6 +13,8 @@ import { t } from "@/i18n";
 import { useSession } from "@/store/session.store";
 import {
   BridgeColors,
+  ChatDrawer,
+  ChatOverlay,
   HealthBar,
   Mono,
   ScreenHeader,
@@ -30,6 +32,7 @@ export default function OperatorLive() {
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
   const [isLive, setIsLive] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   const name = session?.fullName ?? session?.email?.split("@")[0] ?? null;
 
@@ -109,9 +112,7 @@ export default function OperatorLive() {
           ]}
         />
 
-        <View style={styles.chatPeek}>
-          <Text style={styles.chatPeekTxt}>{t("operator.chatPeek")}</Text>
-        </View>
+        <ChatOverlay onExpand={() => setChatOpen(true)} />
 
         <View style={styles.ctaRow}>
           <Pressable
@@ -145,6 +146,8 @@ export default function OperatorLive() {
 
         <Text style={styles.osmoTip}>{t("operator.osmoTip")}</Text>
       </LinearGradient>
+
+      <ChatDrawer visible={chatOpen} onClose={() => setChatOpen(false)} />
     </SafeAreaView>
   );
 }

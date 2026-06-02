@@ -51,6 +51,21 @@ export const es = {
         "El modo Operador requiere Android — Apple no permite USB UVC.",
     },
   },
+  chat: {
+    title: "CHAT EN VIVO · KICK",
+    connect: "CONECTAR",
+    expand: "ABRIR",
+    emptyHint:
+      "Esperando mensajes… Si no llegan, comprueba que el canal exista y esté transmitiendo.",
+    overlayHint: "Chat de kick.com/{channel} · toca para abrir",
+    status: {
+      idle: "INACTIVO",
+      connecting: "CONECTANDO…",
+      open: "EN VIVO",
+      reconnecting: "RECONECTANDO…",
+      error: "ERROR",
+    },
+  },
   camera: {
     remote: {
       title: "VISTA REMOTA DEL OPERADOR",
