@@ -1,11 +1,12 @@
-# Nexo-AI World
+# NexoStreamOBS (NSO)
 
-Mobile broadcast OS for creators using the DJI Osmo Pocket 3. Two cooperating roles:
+Engine de transmisión móvil para Nexo-AI World — pareja un DJI Osmo Pocket 3 con un teléfono para hacer multistreaming a Kick / Twitch / YouTube / TikTok / Restream con chat unificado y control de permisos. Vive junto a NexoClip dentro del registry de engines de Nexo-AI World.
 
+Roles cooperativos:
 - **Camera Operator Mode** (Android): UVC preview of the Osmo, real-time chat overlay, stream-health display, optional stream-start permission.
 - **Streamer Mode** (iOS or Android): remote preview, cross-platform chat with reply, profile + destination + permission management.
 
-Built on **Expo SDK 55** / **React Native 0.83** / **TypeScript** with file-based routing via Expo Router.
+Built on **Expo SDK 54** / **React Native 0.81** / **TypeScript** with file-based routing via Expo Router. Auth + profile are sourced from the Nexo-AI World Supabase project.
 
 ---
 

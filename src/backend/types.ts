@@ -13,7 +13,7 @@
  *     org_id uuid
  *     selected_engine_id text   — slug ('nexoclip', 'nexoobs', …)
  *
- * The "Role" the user picks INSIDE NexoOBS (Streamer vs Camera Operator) is
+ * The "Role" the user picks INSIDE NexoStreamOBS (Streamer vs Camera Operator) is
  * stored locally only — it's session-scoped, not a Nexo platform concept.
  */
 
@@ -42,7 +42,7 @@ export interface NexoSession {
   selectedEngineId: string | null;
 }
 
-/** Local-only choice: which mode of NexoOBS are you running right now. */
+/** Local-only choice: which mode of NexoStreamOBS are you running right now. */
 export type OperatorRole = "streamer" | "operator";
 
 export type PlatformId =

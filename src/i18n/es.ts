@@ -12,8 +12,8 @@ export const es = {
     settings: "Ajustes",
   },
   topBar: {
-    title: "NEXO·AI WORLD",
-    subtitle: "OS DE TRANSMISIÓN MÓVIL",
+    title: "NEXOSTREAMOBS",
+    subtitle: "ENGINE DE TRANSMISIÓN · NEXO-AI WORLD",
   },
   login: {
     title: "INICIAR SESIÓN",
@@ -24,7 +24,7 @@ export const es = {
     cta: "INICIAR SESIÓN",
     noAccount: "¿No tienes cuenta? Créala en nexo-ai.world",
     footer:
-      "NexoOBS es un engine de Nexo-AI World. Tus credenciales y perfil viven en Nexo — aquí solo se reflejan.",
+      "NexoStreamOBS (NSO) es un engine de Nexo-AI World. Tus credenciales y perfil viven en Nexo — aquí solo se reflejan.",
     error: "Error al iniciar sesión",
   },
   lobby: {

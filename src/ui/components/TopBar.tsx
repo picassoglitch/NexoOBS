@@ -16,7 +16,7 @@ export function TopBar({
   title = t("topBar.title"),
   subtitle = t("topBar.subtitle"),
   onSettings,
-  glyph = "N",
+  glyph = "NSO",
 }: Props) {
   return (
     <View style={styles.row}>
@@ -58,7 +58,8 @@ const styles = StyleSheet.create({
     color: "#000",
     fontWeight: "900",
     fontFamily: Mono.fontFamily,
-    fontSize: 16,
+    fontSize: 11,
+    letterSpacing: 0.5,
   },
   title: {
     color: BridgeColors.TextPrimary,

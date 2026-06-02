@@ -6,7 +6,7 @@ import type {
 } from "./types";
 
 /**
- * Backend contract for the NexoOBS engine. Phase 0 implementation talks to
+ * Backend contract for the NexoStreamOBS engine. Phase 0 implementation talks to
  * the same Supabase project as Nexo-AI World + NexoClip (`SupabaseBackend`),
  * with a mock fallback (`MockBackend`) for when env vars aren't configured
  * or for offline UI dev.
