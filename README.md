@@ -79,6 +79,13 @@ npm start          # connects to the dev client (not Expo Go)
 
 You only rebuild the dev client when native code changes (additions to `modules/*` or `app.json` plugins). JS edits hot-reload as usual.
 
+### What lights up in the dev client (Phase 1+)
+
+- `modules/nexo-streaming` (Android, RootEncoder) — `streaming.start({ url, streamKey, ... })` opens Camera2, encodes H.264 + AAC via MediaCodec, publishes to RTMP. **Scaffolded** (module compiles + registers) in Phase 1.A; broadcast wiring lands in Phase 1.B.
+- `modules/nexo-uvc-camera` (Android only) — Osmo Pocket 3 USB-C UVC capture via raw `UsbManager`. Comes online in Phase 2.
+
+In Expo Go (Phase 0) both modules are stubbed; the JS side reads `streaming.available === false` and the UI shows a "dev build required" banner instead of crashing.
+
 ## Project layout
 
 ```
