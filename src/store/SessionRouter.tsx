@@ -3,15 +3,12 @@ import { router, useSegments } from "expo-router";
 import { useSession } from "./session.store";
 
 /**
- * Global watcher that keeps the active route in sync with the session phase.
- * Mounted once inside the SessionProvider in app/_layout.tsx.
+ * Global route watcher. Mounted once inside SessionProvider in
+ * app/_layout.tsx. Keeps the active route in sync with the session phase:
  *
- * Why this exists: the previous design put the phase→route redirect inside
- * app/index.tsx only, which meant once the user navigated to /auth/login the
- * redirect logic was unmounted and a successful login wouldn't take them
- * forward. This watcher fires on every phase or route change, so the app
- * always lands on the right screen regardless of where the change came from
- * (login, profile pick, role pick, logout, session expiry).
+ *   loggedOut → /auth/login
+ *   needsRole → /lobby
+ *   ready     → /streamer  or  /operator  (based on chosen role)
  */
 export function SessionRouter() {
   const { phase, role } = useSession();
@@ -19,18 +16,10 @@ export function SessionRouter() {
 
   useEffect(() => {
     if (phase === "loading") return;
-
     const root = segments[0] ?? "";
-    const path = segments.join("/");
 
     if (phase === "loggedOut") {
       if (root !== "auth") router.replace("/auth/login");
-      return;
-    }
-    if (phase === "needsProfile") {
-      if (path !== "auth/profile-select") {
-        router.replace("/auth/profile-select");
-      }
       return;
     }
     if (phase === "needsRole") {

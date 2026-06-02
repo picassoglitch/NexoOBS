@@ -5,7 +5,9 @@ import { useSession } from "@/store/session.store";
 import { BridgeCard, BridgeColors, Mono, ScreenHeader } from "@/ui";
 
 export default function OperatorHome() {
-  const { profile, clearRole, logout } = useSession();
+  const { session, clearRole, signOut } = useSession();
+  const name =
+    session?.fullName ?? session?.email?.split("@")[0] ?? null;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
@@ -13,7 +15,7 @@ export default function OperatorHome() {
         <ScreenHeader title={t("operator.title")} onBack={clearRole} />
 
         <Text style={styles.heroSub}>
-          {profile?.name ? t("operator.signedInAs", { name: profile.name }) : ""}{" "}
+          {name ? t("operator.signedInAs", { name }) : ""}{" "}
           {t("operator.phase0Hint")}
         </Text>
 
@@ -31,7 +33,7 @@ export default function OperatorHome() {
           <Pressable onPress={clearRole} style={styles.linkBtn}>
             <Text style={styles.linkTxt}>{t("streamer.switchRole")}</Text>
           </Pressable>
-          <Pressable onPress={logout} style={styles.linkBtn}>
+          <Pressable onPress={signOut} style={styles.linkBtn}>
             <Text style={styles.linkTxt}>{t("common.signOut")}</Text>
           </Pressable>
         </View>

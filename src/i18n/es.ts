@@ -1,9 +1,6 @@
 /**
  * Spanish translations — Phase 0 default locale. English added later by
  * creating an en.ts mirror and wiring it through src/i18n/index.ts.
- *
- * Keep keys nested by screen / area so adding/removing a screen doesn't
- * pollute the top level. Variables use {name} placeholders.
  */
 export const es = {
   common: {
@@ -21,26 +18,21 @@ export const es = {
   login: {
     title: "INICIAR SESIÓN",
     subtitle:
-      "Inicio de sesión simulado de Fase 0 — cualquier credencial funciona. Tu SSO real de Nexo lo reemplazará cuando el backend esté listo.",
+      "Inicia sesión con tu cuenta de Nexo-AI World. Es la misma cuenta que usas en nexo-ai.world y en NexoClip.",
     email: "CORREO",
     password: "CONTRASEÑA",
     cta: "INICIAR SESIÓN",
+    noAccount: "¿No tienes cuenta? Créala en nexo-ai.world",
     footer:
-      "Al iniciar sesión aceptas los términos de creadores de Nexo. Datos solo locales en Fase 0 — nada sale de tu dispositivo.",
+      "NexoOBS es un engine de Nexo-AI World. Tus credenciales y perfil viven en Nexo — aquí solo se reflejan.",
     error: "Error al iniciar sesión",
-  },
-  profileSelect: {
-    title: "ELIGE UN PERFIL",
-    subtitle:
-      "Cada perfil tiene sus propios destinos, overlays y permisos. Toca uno para continuar.",
-    createProfile: "+ CREAR PERFIL",
-    empty: "Aún no hay perfiles. Toca 'Crear perfil' para añadir uno.",
-    lastAs: "último rol",
   },
   lobby: {
     title: "¿QUIÉN ERES HOY?",
-    subtitleNamed: "{name}, elige el rol que jugarás en esta sesión.",
+    subtitleNamed: "Hola {name}. Elige el rol que jugarás en esta sesión.",
     subtitle: "Elige el rol que jugarás en esta sesión.",
+    tierLine: "Plan {tier} · engine seleccionado: {engine}",
+    tierLineNoEngine: "Plan {tier}",
     streamer: {
       title: "STREAMER",
       sub: "Vista remota · chat · control de permisos",

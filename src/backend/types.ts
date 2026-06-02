@@ -1,32 +1,49 @@
 /**
- * Backend contract — Phase 0 ships an in-memory mock; later phases swap in
- * a real HTTP client without changing call sites.
+ * Types mirror the Nexo-AI World schema (Supabase `profiles` table) so this
+ * mobile engine reads the same rows the Next.js shell + NexoClip do.
+ *
+ *   public.profiles
+ *     id uuid primary key references auth.users(id) on delete cascade
+ *     email text
+ *     full_name text
+ *     avatar_url text
+ *     preferred_locale text ('en' | 'es')
+ *     role text       — UserRole (see below)
+ *     tier text       — SubscriptionTier (see below)
+ *     org_id uuid
+ *     selected_engine_id text   — slug ('nexoclip', 'nexoobs', …)
+ *
+ * The "Role" the user picks INSIDE NexoOBS (Streamer vs Camera Operator) is
+ * stored locally only — it's session-scoped, not a Nexo platform concept.
  */
 
-export type Role = "streamer" | "operator";
+export type UserRole =
+  | "SUPER_ADMIN"
+  | "ADMIN"
+  | "OPERATOR"
+  | "EDITOR"
+  | "VIEWER"
+  | "CLIENT";
 
-export interface Session {
-  /** Opaque token; stored in expo-secure-store. */
-  token: string;
+export type SubscriptionTier = "FREE" | "PRO" | "PARTNER" | "ALL_ACCESS";
+
+/** Session info read from Supabase auth + the joined `profiles` row. */
+export interface NexoSession {
+  /** Supabase auth user id (= profiles.id). */
   userId: string;
-  email: string;
-  displayName: string;
-  /** Epoch ms. Phase 0 mock returns now() + 30 days. */
-  expiresAt: number;
+  email: string | null;
+  fullName: string | null;
+  avatarUrl: string | null;
+  preferredLocale: "en" | "es";
+  role: UserRole;
+  tier: SubscriptionTier;
+  orgId: string | null;
+  /** Engine slug the user selected as their LIVE engine (PRO tier). */
+  selectedEngineId: string | null;
 }
 
-export interface Profile {
-  id: string;
-  name: string;
-  /** "@handle" identity displayed in lobbies, chat ops, etc. */
-  handle: string;
-  /** Avatar URL or null; Phase 0 mock uses initials. */
-  avatarUrl: string | null;
-  /** Last-used role, if any. UI may default the lobby to this. */
-  lastRole: Role | null;
-  /** Default platform connections enabled for this profile. */
-  defaultDestinations: PlatformId[];
-}
+/** Local-only choice: which mode of NexoOBS are you running right now. */
+export type OperatorRole = "streamer" | "operator";
 
 export type PlatformId =
   | "kick"
@@ -39,20 +56,14 @@ export type PlatformId =
 
 export interface PlatformConnection {
   platformId: PlatformId;
-  /** Channel handle / login name (e.g. Kick slug, Twitch login). */
   handle: string;
-  /** Whether tokens are stored for sending (chat write, stream start, etc.). */
   hasAuth: boolean;
-  /** When the user enabled this in their profile. */
   connectedAt: number;
 }
 
 export interface Permissions {
-  /** Operator may send chat messages on behalf of the streamer. */
   chatReplyAllowed: boolean;
-  /** Operator may start/stop the live stream. */
   streamControlAllowed: boolean;
-  /** Operator may switch destinations on the fly. */
   destinationSwitchAllowed: boolean;
 }
 

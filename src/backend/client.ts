@@ -1,40 +1,38 @@
 import type {
   HealthSample,
+  NexoSession,
   PlatformConnection,
   PlatformId,
-  Profile,
-  Session,
 } from "./types";
 
 /**
- * Single interface every screen depends on. The Phase-0 mock lives in
- * ./mock.ts; a real HTTP impl plugs in here later without screen changes.
+ * Backend contract for the NexoOBS engine. Phase 0 implementation talks to
+ * the same Supabase project as Nexo-AI World + NexoClip (`SupabaseBackend`),
+ * with a mock fallback (`MockBackend`) for when env vars aren't configured
+ * or for offline UI dev.
  */
 export interface BackendClient {
-  // ---- Auth ---------------------------------------------------------------
-  loginWithPassword(email: string, password: string): Promise<Session>;
-  refreshSession(token: string): Promise<Session>;
-  logout(): Promise<void>;
+  // ---- Auth (Supabase-backed) --------------------------------------------
+  /** Email/password sign-in. Returns the joined NexoSession on success. */
+  signInWithPassword(email: string, password: string): Promise<NexoSession>;
+  /** Current session if one's already cached/refreshable; null otherwise. */
+  getCurrentSession(): Promise<NexoSession | null>;
+  signOut(): Promise<void>;
+  /** Subscribe to auth state changes (sign-in / sign-out / token refresh). */
+  onAuthChange(handler: (session: NexoSession | null) => void): () => void;
 
-  // ---- Profiles -----------------------------------------------------------
-  listProfiles(): Promise<Profile[]>;
-  upsertProfile(profile: Profile): Promise<Profile>;
-
-  // ---- Platform connections ----------------------------------------------
-  listPlatformConnections(profileId: string): Promise<PlatformConnection[]>;
+  // ---- Platform connections (Phase 0: read-only mock) --------------------
+  listPlatformConnections(userId: string): Promise<PlatformConnection[]>;
   upsertPlatformConnection(
-    profileId: string,
+    userId: string,
     conn: PlatformConnection,
   ): Promise<PlatformConnection>;
   setPlatformEnabled(
-    profileId: string,
+    userId: string,
     platformId: PlatformId,
     enabled: boolean,
   ): Promise<void>;
 
-  // ---- Stream sessions + role coordination -------------------------------
-  // (signatures land in commit 6 when permissions UI ships)
-
-  // ---- Telemetry (operator → streamer) -----------------------------------
+  // ---- Telemetry ----------------------------------------------------------
   reportHealth(sessionId: string, sample: HealthSample): Promise<void>;
 }

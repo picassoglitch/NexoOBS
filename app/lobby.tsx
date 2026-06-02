@@ -3,25 +3,36 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { t } from "@/i18n";
 import { useSession } from "@/store/session.store";
-import type { Role } from "@/backend";
+import type { OperatorRole } from "@/backend";
 import { BridgeColors, Mono, ScreenHeader } from "@/ui";
 
 const isIOS = Platform.OS === "ios";
 
 export default function LobbyScreen() {
-  const { profile, selectRole, clearProfile, logout } = useSession();
+  const { session, selectRole, signOut } = useSession();
 
-  const subtitle = profile?.name
-    ? t("lobby.subtitleNamed", { name: profile.name })
+  const displayName =
+    session?.fullName ?? session?.email?.split("@")[0] ?? null;
+  const subtitle = displayName
+    ? t("lobby.subtitleNamed", { name: displayName })
     : t("lobby.subtitle");
+  const tierLine = session
+    ? session.selectedEngineId
+      ? t("lobby.tierLine", {
+          tier: session.tier,
+          engine: session.selectedEngineId,
+        })
+      : t("lobby.tierLineNoEngine", { tier: session.tier })
+    : "";
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       <View style={styles.body}>
-        <ScreenHeader title={t("topBar.title")} onBack={clearProfile} />
+        <ScreenHeader title={t("topBar.title")} onBack={signOut} />
 
         <Text style={styles.hero}>{t("lobby.title")}</Text>
         <Text style={styles.heroSub}>{subtitle}</Text>
+        {tierLine.length > 0 && <Text style={styles.tier}>{tierLine}</Text>}
 
         <RoleCard
           id="streamer"
@@ -52,7 +63,7 @@ export default function LobbyScreen() {
         />
 
         <View style={{ flex: 1 }} />
-        <Pressable onPress={logout} style={{ alignSelf: "center", padding: 8 }}>
+        <Pressable onPress={signOut} style={{ alignSelf: "center", padding: 8 }}>
           <Text style={styles.logout}>{t("common.signOut")}</Text>
         </Pressable>
       </View>
@@ -61,7 +72,7 @@ export default function LobbyScreen() {
 }
 
 interface RoleCardProps {
-  id: Role;
+  id: OperatorRole;
   title: string;
   subtitle: string;
   bullets: string[];
@@ -120,28 +131,24 @@ const styles = StyleSheet.create({
     color: BridgeColors.TextTertiary,
     fontSize: 12,
     lineHeight: 17,
+  },
+  tier: {
+    color: BridgeColors.Primary,
+    fontFamily: Mono.fontFamily,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    marginTop: 2,
     marginBottom: 4,
   },
-  card: {
-    borderRadius: 14,
-    borderWidth: 1.5,
-    padding: 16,
-  },
+  card: { borderRadius: 14, borderWidth: 1.5, padding: 16 },
   cardTitle: {
     fontFamily: Mono.fontFamily,
     fontWeight: "900",
     fontSize: 16,
     letterSpacing: 2,
   },
-  cardSub: {
-    color: BridgeColors.TextSecondary,
-    fontSize: 13,
-    marginTop: 4,
-  },
-  bullet: {
-    color: BridgeColors.TextSecondary,
-    fontSize: 12,
-  },
+  cardSub: { color: BridgeColors.TextSecondary, fontSize: 13, marginTop: 4 },
+  bullet: { color: BridgeColors.TextSecondary, fontSize: 12 },
   warnRow: {
     marginTop: 10,
     paddingTop: 10,

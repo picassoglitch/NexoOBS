@@ -5,9 +5,9 @@ import { useSession } from "@/store/session.store";
 import { BridgeColors } from "@/ui";
 
 /**
- * Phase tracker. Hydrate from secure-store on first mount, then redirect to
- * the correct screen for the current session phase. While loading, render a
- * dark splash so we never flash the wrong screen.
+ * Splash + initial-route dispatcher. The global SessionRouter watches phase
+ * changes from anywhere in the tree; this screen just hands off the first
+ * navigation when the app boots from scratch.
  */
 export default function Index() {
   const { phase, role } = useSession();
@@ -16,10 +16,6 @@ export default function Index() {
     if (phase === "loading") return;
     if (phase === "loggedOut") {
       router.replace("/auth/login");
-      return;
-    }
-    if (phase === "needsProfile") {
-      router.replace("/auth/profile-select");
       return;
     }
     if (phase === "needsRole") {

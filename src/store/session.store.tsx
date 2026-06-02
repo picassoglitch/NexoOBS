@@ -9,39 +9,32 @@ import {
   useState,
 } from "react";
 import { backend } from "@/backend";
-import type { Profile, Role, Session } from "@/backend";
+import type { NexoSession, OperatorRole } from "@/backend";
 import { kv } from "@/store/kv";
 
-const SESSION_KEY = "nexo.session.v1";
-const PROFILE_KEY = "nexo.activeProfileId.v1";
 const ROLE_KEY = "nexo.activeRole.v1";
 
 export type SessionPhase =
-  | "loading" // hydrating from kv store
-  | "loggedOut" // no session
-  | "needsProfile" // session OK, no profile selected
-  | "needsRole" // profile picked, no role yet
-  | "ready"; // everything resolved → role + profile + session
+  | "loading" // hydrating Supabase session
+  | "loggedOut" // no Supabase user
+  | "needsRole" // logged in, no NexoOBS role picked yet
+  | "ready"; // role picked
 
 export interface SessionState {
   phase: SessionPhase;
-  session: Session | null;
-  profiles: Profile[];
-  profile: Profile | null;
-  role: Role | null;
+  /** Joined Supabase user + Nexo profile row. */
+  session: NexoSession | null;
+  /** Local-only — which mode of NexoOBS the user is running this session. */
+  role: OperatorRole | null;
   error: string | null;
 }
 
 interface SessionActions {
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  refreshProfiles: () => Promise<void>;
-  selectProfile: (id: string) => Promise<void>;
-  selectRole: (role: Role) => Promise<void>;
-  /** Drops the role choice but keeps the profile (returns to the lobby). */
+  signIn: (email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  selectRole: (role: OperatorRole) => Promise<void>;
+  /** Drops the role choice but keeps the auth (back from a role home). */
   clearRole: () => Promise<void>;
-  /** Drops the picked profile (returns to the profile picker). */
-  clearProfile: () => Promise<void>;
 }
 
 const Ctx = createContext<(SessionState & SessionActions) | null>(null);
@@ -50,8 +43,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<SessionState>({
     phase: "loading",
     session: null,
-    profiles: [],
-    profile: null,
     role: null,
     error: null,
   });
@@ -69,109 +60,67 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, ...patch }));
   }, []);
 
-  // Initial hydrate ---------------------------------------------------------
+  const computePhase = useCallback(
+    (session: NexoSession | null, role: OperatorRole | null): SessionPhase => {
+      if (!session) return "loggedOut";
+      if (!role) return "needsRole";
+      return "ready";
+    },
+    [],
+  );
+
+  // Hydrate + subscribe to auth changes -------------------------------------
   useEffect(() => {
+    let unsubscribe: (() => void) | null = null;
+
     (async () => {
       try {
-        const stored = await kv.get(SESSION_KEY);
-        if (!stored) {
-          safeSet({ phase: "loggedOut" });
-          return;
-        }
-        const parsed: Session = JSON.parse(stored);
-        if (parsed.expiresAt < Date.now()) {
-          await kv.remove(SESSION_KEY);
-          safeSet({ phase: "loggedOut" });
-          return;
-        }
-        const session = await backend
-          .refreshSession(parsed.token)
-          .catch(() => null);
-        if (!session) {
-          await kv.remove(SESSION_KEY);
-          safeSet({ phase: "loggedOut" });
-          return;
-        }
-        await kv.set(SESSION_KEY, JSON.stringify(session));
-
-        const profiles = await backend.listProfiles();
-        const profileId = await kv.get(PROFILE_KEY);
-        const profile = profileId
-          ? (profiles.find((p) => p.id === profileId) ?? null)
-          : null;
-        const roleStr = await kv.get(ROLE_KEY);
-        const role: Role | null =
+        const [session, roleStr] = await Promise.all([
+          backend.getCurrentSession(),
+          kv.get(ROLE_KEY),
+        ]);
+        const role: OperatorRole | null =
           roleStr === "streamer" || roleStr === "operator" ? roleStr : null;
-
-        let phase: SessionPhase = "needsProfile";
-        if (profile) phase = role ? "ready" : "needsRole";
-
-        safeSet({ session, profiles, profile, role, phase });
+        safeSet({ session, role, phase: computePhase(session, role) });
       } catch (err) {
         safeSet({
           phase: "loggedOut",
           error: err instanceof Error ? err.message : "hydrate failed",
         });
       }
+
+      unsubscribe = backend.onAuthChange(async (next) => {
+        // Auth state can change out from under us (token refresh, sign-out from
+        // another tab on a future web companion, etc.) — keep local state synced.
+        const roleStr = await kv.get(ROLE_KEY);
+        const role: OperatorRole | null =
+          roleStr === "streamer" || roleStr === "operator" ? roleStr : null;
+        safeSet({ session: next, role, phase: computePhase(next, role) });
+      });
     })();
-  }, [safeSet]);
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [safeSet, computePhase]);
 
   // Actions -----------------------------------------------------------------
-  const login = useCallback<SessionActions["login"]>(
+  const signIn = useCallback<SessionActions["signIn"]>(
     async (email, password) => {
       safeSet({ error: null });
-      const session = await backend.loginWithPassword(email, password);
-      await kv.set(SESSION_KEY, JSON.stringify(session));
-      const profiles = await backend.listProfiles();
-      safeSet({
-        session,
-        profiles,
-        profile: null,
-        role: null,
-        phase: "needsProfile",
-      });
+      const session = await backend.signInWithPassword(email, password);
+      // Pre-warm the local role so the lobby can highlight what they used last
+      // in a future enhancement. For now we always re-pick.
+      safeSet({ session, role: null, phase: "needsRole" });
     },
     [safeSet],
   );
 
-  const logout = useCallback<SessionActions["logout"]>(async () => {
-    await backend.logout().catch(() => {});
-    await Promise.all([
-      kv.remove(SESSION_KEY),
-      kv.remove(PROFILE_KEY),
-      kv.remove(ROLE_KEY),
-    ]);
-    safeSet({
-      session: null,
-      profile: null,
-      role: null,
-      profiles: [],
-      phase: "loggedOut",
-    });
+  const signOut = useCallback<SessionActions["signOut"]>(async () => {
+    await backend.signOut().catch(() => {});
+    await kv.remove(ROLE_KEY);
+    safeSet({ session: null, role: null, phase: "loggedOut" });
   }, [safeSet]);
-
-  const refreshProfiles = useCallback<
-    SessionActions["refreshProfiles"]
-  >(async () => {
-    if (!state.session) return;
-    const profiles = await backend.listProfiles();
-    safeSet({ profiles });
-  }, [safeSet, state.session]);
-
-  const selectProfile = useCallback<SessionActions["selectProfile"]>(
-    async (id) => {
-      const profile = state.profiles.find((p) => p.id === id) ?? null;
-      if (!profile) return;
-      await kv.set(PROFILE_KEY, id);
-      safeSet({
-        profile,
-        // Pre-fill the role from the profile's lastRole; user confirms in lobby.
-        role: null,
-        phase: "needsRole",
-      });
-    },
-    [safeSet, state.profiles],
-  );
 
   const selectRole = useCallback<SessionActions["selectRole"]>(
     async (role) => {
@@ -186,34 +135,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     safeSet({ role: null, phase: "needsRole" });
   }, [safeSet]);
 
-  const clearProfile = useCallback<
-    SessionActions["clearProfile"]
-  >(async () => {
-    await Promise.all([kv.remove(PROFILE_KEY), kv.remove(ROLE_KEY)]);
-    safeSet({ profile: null, role: null, phase: "needsProfile" });
-  }, [safeSet]);
-
   const value = useMemo(
-    () => ({
-      ...state,
-      login,
-      logout,
-      refreshProfiles,
-      selectProfile,
-      selectRole,
-      clearRole,
-      clearProfile,
-    }),
-    [
-      state,
-      login,
-      logout,
-      refreshProfiles,
-      selectProfile,
-      selectRole,
-      clearRole,
-      clearProfile,
-    ],
+    () => ({ ...state, signIn, signOut, selectRole, clearRole }),
+    [state, signIn, signOut, selectRole, clearRole],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

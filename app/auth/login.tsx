@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -14,18 +15,24 @@ import { t } from "@/i18n";
 import { useSession } from "@/store/session.store";
 import { BridgeCard, BridgeColors, Mono, TopBar } from "@/ui";
 
+const SIGNUP_URL = "https://nexo-ai.world/sign-up";
+
 export default function LoginScreen() {
-  const { login } = useSession();
-  const [email, setEmail] = useState("demo@nexo.ai");
-  const [password, setPassword] = useState("········");
+  const { signIn } = useSession();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function onSubmit() {
+    if (!email || !password) {
+      setError(t("login.error"));
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      await login(email, password);
+      await signIn(email, password);
     } catch (e) {
       setError(e instanceof Error ? e.message : t("login.error"));
     } finally {
@@ -52,6 +59,8 @@ export default function LoginScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
+              autoComplete="email"
+              placeholder="tu@correo.com"
               placeholderTextColor={BridgeColors.TextTertiary}
               style={styles.input}
             />
@@ -61,6 +70,8 @@ export default function LoginScreen() {
               value={password}
               onChangeText={setPassword}
               secureTextEntry
+              autoComplete="password"
+              placeholder="••••••••"
               placeholderTextColor={BridgeColors.TextTertiary}
               style={styles.input}
             />
@@ -80,6 +91,13 @@ export default function LoginScreen() {
             )}
           </Pressable>
 
+          <Pressable
+            onPress={() => Linking.openURL(SIGNUP_URL)}
+            style={styles.noAccountBtn}
+          >
+            <Text style={styles.noAccountTxt}>{t("login.noAccount")}</Text>
+          </Pressable>
+
           <Text style={styles.footer}>{t("login.footer")}</Text>
         </View>
       </KeyboardAvoidingView>
@@ -89,12 +107,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BridgeColors.Background },
-  body: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    gap: 14,
-  },
+  body: { flex: 1, paddingHorizontal: 16, paddingTop: 8, gap: 14 },
   hero: {
     color: BridgeColors.TextPrimary,
     fontFamily: Mono.fontFamily,
@@ -146,6 +159,13 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     fontSize: 14,
     letterSpacing: 2,
+  },
+  noAccountBtn: { alignSelf: "center", padding: 6 },
+  noAccountTxt: {
+    color: BridgeColors.Primary,
+    fontFamily: Mono.fontFamily,
+    fontSize: 12,
+    letterSpacing: 1,
   },
   footer: {
     color: BridgeColors.TextTertiary,
