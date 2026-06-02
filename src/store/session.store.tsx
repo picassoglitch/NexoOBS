@@ -8,16 +8,16 @@ import {
   useRef,
   useState,
 } from "react";
-import * as SecureStore from "expo-secure-store";
 import { backend } from "@/backend";
 import type { Profile, Role, Session } from "@/backend";
+import { kv } from "@/store/kv";
 
 const SESSION_KEY = "nexo.session.v1";
 const PROFILE_KEY = "nexo.activeProfileId.v1";
 const ROLE_KEY = "nexo.activeRole.v1";
 
 export type SessionPhase =
-  | "loading" // hydrating from secure-store
+  | "loading" // hydrating from kv store
   | "loggedOut" // no session
   | "needsProfile" // session OK, no profile selected
   | "needsRole" // profile picked, no role yet
@@ -71,14 +71,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const stored = await SecureStore.getItemAsync(SESSION_KEY);
+        const stored = await kv.get(SESSION_KEY);
         if (!stored) {
           safeSet({ phase: "loggedOut" });
           return;
         }
         const parsed: Session = JSON.parse(stored);
         if (parsed.expiresAt < Date.now()) {
-          await SecureStore.deleteItemAsync(SESSION_KEY);
+          await kv.remove(SESSION_KEY);
           safeSet({ phase: "loggedOut" });
           return;
         }
@@ -86,18 +86,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           .refreshSession(parsed.token)
           .catch(() => null);
         if (!session) {
-          await SecureStore.deleteItemAsync(SESSION_KEY);
+          await kv.remove(SESSION_KEY);
           safeSet({ phase: "loggedOut" });
           return;
         }
-        await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(session));
+        await kv.set(SESSION_KEY, JSON.stringify(session));
 
         const profiles = await backend.listProfiles();
-        const profileId = await SecureStore.getItemAsync(PROFILE_KEY);
+        const profileId = await kv.get(PROFILE_KEY);
         const profile = profileId
           ? (profiles.find((p) => p.id === profileId) ?? null)
           : null;
-        const roleStr = await SecureStore.getItemAsync(ROLE_KEY);
+        const roleStr = await kv.get(ROLE_KEY);
         const role: Role | null =
           roleStr === "streamer" || roleStr === "operator" ? roleStr : null;
 
@@ -119,7 +119,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     async (email, password) => {
       safeSet({ error: null });
       const session = await backend.loginWithPassword(email, password);
-      await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(session));
+      await kv.set(SESSION_KEY, JSON.stringify(session));
       const profiles = await backend.listProfiles();
       safeSet({
         session,
@@ -135,9 +135,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const logout = useCallback<SessionActions["logout"]>(async () => {
     await backend.logout().catch(() => {});
     await Promise.all([
-      SecureStore.deleteItemAsync(SESSION_KEY),
-      SecureStore.deleteItemAsync(PROFILE_KEY),
-      SecureStore.deleteItemAsync(ROLE_KEY),
+      kv.remove(SESSION_KEY),
+      kv.remove(PROFILE_KEY),
+      kv.remove(ROLE_KEY),
     ]);
     safeSet({
       session: null,
@@ -160,7 +160,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     async (id) => {
       const profile = state.profiles.find((p) => p.id === id) ?? null;
       if (!profile) return;
-      await SecureStore.setItemAsync(PROFILE_KEY, id);
+      await kv.set(PROFILE_KEY, id);
       safeSet({
         profile,
         // Pre-fill the role from the profile's lastRole; user confirms in lobby.
@@ -173,14 +173,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const selectRole = useCallback<SessionActions["selectRole"]>(
     async (role) => {
-      await SecureStore.setItemAsync(ROLE_KEY, role);
+      await kv.set(ROLE_KEY, role);
       safeSet({ role, phase: "ready" });
     },
     [safeSet],
   );
 
   const clearRole = useCallback<SessionActions["clearRole"]>(async () => {
-    await SecureStore.deleteItemAsync(ROLE_KEY);
+    await kv.remove(ROLE_KEY);
     safeSet({ role: null, phase: "needsRole" });
   }, [safeSet]);
 
