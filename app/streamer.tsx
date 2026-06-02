@@ -1,10 +1,16 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { t } from "@/i18n";
 import { useSession } from "@/store/session.store";
 import { useChat } from "@/store/chat.store";
+import { usePermissions } from "@/store/permissions.store";
+import {
+  enabledDestinationsList,
+  useDestinations,
+} from "@/destinations/store";
+import { PLATFORM_META } from "@/destinations/types";
 import {
   BridgeCard,
   BridgeColors,
@@ -29,14 +35,21 @@ import {
 export default function StreamerHome() {
   const { session, clearRole, signOut } = useSession();
   const { channel: kickChannel, status: kickStatus } = useChat();
+  const { destinations } = useDestinations();
+  const { permissions, setPermission } = usePermissions();
   const [isLive, setIsLive] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
-  const [perms, setPerms] = useState({
-    chatReply: false,
-    streamControl: true,
-    destSwitch: false,
-  });
 
+  const enabled = useMemo(
+    () => enabledDestinationsList(destinations),
+    [destinations],
+  );
+  const enabledSummary =
+    enabled.length === 0
+      ? t("values.noDestinations")
+      : enabled
+          .map((d) => PLATFORM_META[d.platformId].displayName)
+          .join(" + ");
   const name = session?.fullName ?? session?.email?.split("@")[0] ?? null;
 
   return (
@@ -78,8 +91,15 @@ export default function StreamerHome() {
           <StatusChip label={t("chips.bat")} value="78%" health="good" />
           <StatusChip
             label={t("chips.out")}
-            value={t("values.noDestinations")}
-            health="warn"
+            value={
+              enabled.length === 0
+                ? t("values.noDestinations")
+                : `${enabled.length}·${PLATFORM_META[
+                    enabled[0]!.platformId
+                  ].displayName.toUpperCase()}`
+            }
+            health={enabled.length === 0 ? "warn" : "good"}
+            onPress={() => router.push("/destinations" as never)}
           />
           <StatusChip
             label={t("chips.chat")}
@@ -105,11 +125,16 @@ export default function StreamerHome() {
         <CameraPreview isLive={isLive} remote />
 
         <Text style={styles.sectionLabel}>{t("streamer.destinations")}</Text>
-        <BridgeCard accent={BridgeColors.AccentAmber}>
-          <Text style={styles.placeholderTxt}>
-            Configura destinos en commit 5 (Kick) y commit 6+.
-          </Text>
-        </BridgeCard>
+        <Pressable onPress={() => router.push("/destinations" as never)}>
+          <BridgeCard
+            accent={
+              enabled.length > 0 ? BridgeColors.AccentGreen : BridgeColors.AccentAmber
+            }
+          >
+            <Text style={styles.destSummary}>{enabledSummary}</Text>
+            <Text style={styles.destHint}>{t("streamer.destManage")}</Text>
+          </BridgeCard>
+        </Pressable>
 
         <Text style={styles.sectionLabel}>
           {t("streamer.sectionPermissions")}
@@ -117,20 +142,20 @@ export default function StreamerHome() {
         <BridgeCard>
           <PermRow
             label={t("streamer.permChatReply")}
-            value={perms.chatReply}
-            onChange={(v) => setPerms((p) => ({ ...p, chatReply: v }))}
+            value={permissions.chatReplyAllowed}
+            onChange={(v) => void setPermission("chatReplyAllowed", v)}
           />
           <Divider />
           <PermRow
             label={t("streamer.permStreamControl")}
-            value={perms.streamControl}
-            onChange={(v) => setPerms((p) => ({ ...p, streamControl: v }))}
+            value={permissions.streamControlAllowed}
+            onChange={(v) => void setPermission("streamControlAllowed", v)}
           />
           <Divider />
           <PermRow
             label={t("streamer.permSwitch")}
-            value={perms.destSwitch}
-            onChange={(v) => setPerms((p) => ({ ...p, destSwitch: v }))}
+            value={permissions.destinationSwitchAllowed}
+            onChange={(v) => void setPermission("destinationSwitchAllowed", v)}
           />
           <Text style={styles.permHint}>{t("streamer.permLaterHint")}</Text>
         </BridgeCard>
@@ -138,12 +163,22 @@ export default function StreamerHome() {
         <Text style={styles.sectionLabel}>{t("streamer.sectionActions")}</Text>
         <GoLiveButton
           isLive={isLive}
-          anyEnabled
+          anyEnabled={enabled.length > 0}
           durationMs={isLive ? Date.now() % 200_000 : 0}
           subtitle={
-            isLive ? t("streamer.goLiveSubLive") : t("streamer.goLiveSubIdle")
+            isLive
+              ? t("streamer.goLiveSubLive")
+              : enabled.length > 0
+                ? enabledSummary
+                : t("streamer.goLiveSubIdle")
           }
-          onPress={() => setIsLive((v) => !v)}
+          onPress={() => {
+            if (enabled.length === 0) {
+              router.push("/destinations" as never);
+              return;
+            }
+            setIsLive((v) => !v);
+          }}
         />
         <View style={styles.pillsRow}>
           <QuickPill
@@ -158,7 +193,7 @@ export default function StreamerHome() {
           />
           <QuickPill
             label={t("streamer.actDestinations")}
-            onPress={() => router.push("/diagnostics" as never)}
+            onPress={() => router.push("/destinations" as never)}
             style={{ flex: 1 }}
           />
         </View>
@@ -239,6 +274,18 @@ const styles = StyleSheet.create({
     marginBottom: -2,
   },
   placeholderTxt: { color: BridgeColors.TextSecondary, fontSize: 12 },
+  destSummary: {
+    color: BridgeColors.TextPrimary,
+    fontFamily: Mono.fontFamily,
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  destHint: {
+    color: BridgeColors.TextTertiary,
+    fontSize: 11,
+    marginTop: 4,
+  },
   permRow: {
     flexDirection: "row",
     alignItems: "center",

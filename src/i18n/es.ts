@@ -51,6 +51,18 @@ export const es = {
         "El modo Operador requiere Android — Apple no permite USB UVC.",
     },
   },
+  destinations: {
+    title: "DESTINOS",
+    intro:
+      "Una fila por plataforma. La misma fila controla a dónde transmites (RTMP) y de qué canal leemos el chat. Activa las que quieras usar en la próxima transmisión.",
+    slug: "canal",
+    notConfigured: "Sin configurar",
+    channel: "CANAL / SLUG",
+    streamKey: "CLAVE DE TRANSMISIÓN",
+    ingestUrl: "URL DE INGEST",
+    reveal: "MOSTRAR",
+    hide: "OCULTAR",
+  },
   chat: {
     title: "TU CHAT · KICK",
     connect: "CONECTAR",
@@ -107,10 +119,12 @@ export const es = {
     sectionPermissions: "PERMISOS DEL OPERADOR",
     sectionActions: "ACCIONES",
     destinations: "DESTINOS",
+    destManage: "Toca para configurar canales y claves.",
     permChatReply: "Permitir respuesta del operador en el chat",
     permStreamControl: "Permitir iniciar/parar la transmisión",
     permSwitch: "Permitir cambiar destinos en vivo",
-    permLaterHint: "Los toggles se activarán en commit 6.",
+    permLaterHint:
+      "Toggles guardados en el dispositivo. El operador respeta estos permisos al instante; la sincronización con backend llega en Fase 1.",
     goLive: "INICIAR TRANSMISIÓN",
     goLiveSubIdle: "Aún no hay destinos configurados",
     goLiveSubLive: "EN VIVO",

@@ -10,46 +10,47 @@ import {
 } from "react";
 import { KickProvider } from "@/chat/KickProvider";
 import type { ChatMessage, ChatStatus } from "@/chat";
-import { kv } from "./kv";
+import { useDestinations } from "@/destinations/store";
 
 const MAX_MESSAGES = 250;
-const CHANNEL_KEY = "nexo.chat.kickChannel.v1";
-/** No demo default — the user's own Kick channel slug. They set it in the
- *  destinations screen (commit 6) or directly in the chat input until then. */
-const DEFAULT_KICK_CHANNEL = "";
 
 interface ChatRuntime {
   messages: ChatMessage[];
   status: ChatStatus;
+  /** Channel slug we're currently connected to (from destinations.kick). */
   channel: string;
   error: string | null;
+  /** Inline override — writes back to the Kick destination row. */
   setChannel: (channel: string) => Promise<void>;
   clearMessages: () => void;
 }
 
 const Ctx = createContext<ChatRuntime | null>(null);
 
+/**
+ * Chat reads the user's OWN Kick channel from the destinations store —
+ * the same row used to broadcast to that platform. Single source of truth.
+ *
+ * If the user hasn't filled in their Kick slug yet, we sit in idle until
+ * they do (via the destinations screen or the chat input).
+ */
 export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
+  const { destinations, update, loaded } = useDestinations();
+  const channel = destinations.kick.channelSlug.trim().toLowerCase();
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [status, setStatus] = useState<ChatStatus>("idle");
-  const [channel, setChannelState] = useState<string>(DEFAULT_KICK_CHANNEL);
   const [error, setError] = useState<string | null>(null);
   const providerRef = useRef<KickProvider | null>(null);
 
-  // Hydrate the saved channel preference once.
   useEffect(() => {
-    (async () => {
-      const saved = await kv.get(CHANNEL_KEY);
-      if (saved && saved.trim().length > 0) setChannelState(saved.trim());
-    })();
-  }, []);
-
-  // Connect / reconnect whenever the channel changes. Empty channel = unconfigured.
-  useEffect(() => {
-    if (!channel || channel.trim().length === 0) {
+    if (!loaded) return;
+    if (!channel) {
       setStatus("idle");
+      setMessages([]);
       return;
     }
+
     const provider = new KickProvider();
     providerRef.current = provider;
     setError(null);
@@ -75,14 +76,16 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
       provider.disconnect();
       providerRef.current = null;
     };
-  }, [channel]);
+  }, [channel, loaded]);
 
-  const setChannel = useCallback(async (next: string) => {
-    const trimmed = next.trim().toLowerCase();
-    if (!trimmed) return;
-    await kv.set(CHANNEL_KEY, trimmed);
-    setChannelState(trimmed);
-  }, []);
+  const setChannel = useCallback(
+    async (next: string) => {
+      const trimmed = next.trim().toLowerCase();
+      if (!trimmed) return;
+      await update("kick", { channelSlug: trimmed });
+    },
+    [update],
+  );
 
   const clearMessages = useCallback(() => setMessages([]), []);
 

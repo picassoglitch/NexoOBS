@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { t } from "@/i18n";
 import { useSession } from "@/store/session.store";
+import { usePermissions } from "@/store/permissions.store";
 import {
   BridgeColors,
   ChatDrawer,
@@ -29,10 +30,13 @@ import {
  */
 export default function OperatorLive() {
   const { session, clearRole, signOut } = useSession();
+  const { permissions } = usePermissions();
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
   const [isLive, setIsLive] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+
+  const canControlStream = permissions.streamControlAllowed;
 
   const name = session?.fullName ?? session?.email?.split("@")[0] ?? null;
 
@@ -116,16 +120,21 @@ export default function OperatorLive() {
 
         <View style={styles.ctaRow}>
           <Pressable
-            onPress={() => setIsLive((v) => !v)}
+            onPress={() => canControlStream && setIsLive((v) => !v)}
+            disabled={!canControlStream}
             style={[
               styles.cta,
               {
-                borderColor: isLive
-                  ? BridgeColors.AccentRed
-                  : BridgeColors.AccentGreen,
-                backgroundColor: isLive
-                  ? "rgba(255, 77, 109, 0.18)"
-                  : "rgba(0, 255, 163, 0.18)",
+                borderColor: !canControlStream
+                  ? BridgeColors.TextTertiary
+                  : isLive
+                    ? BridgeColors.AccentRed
+                    : BridgeColors.AccentGreen,
+                backgroundColor: !canControlStream
+                  ? "rgba(111, 117, 128, 0.18)"
+                  : isLive
+                    ? "rgba(255, 77, 109, 0.18)"
+                    : "rgba(0, 255, 163, 0.18)",
               },
             ]}
           >
@@ -133,9 +142,11 @@ export default function OperatorLive() {
               style={[
                 styles.ctaTxt,
                 {
-                  color: isLive
-                    ? BridgeColors.AccentRed
-                    : BridgeColors.AccentGreen,
+                  color: !canControlStream
+                    ? BridgeColors.TextTertiary
+                    : isLive
+                      ? BridgeColors.AccentRed
+                      : BridgeColors.AccentGreen,
                 },
               ]}
             >
@@ -143,6 +154,10 @@ export default function OperatorLive() {
             </Text>
           </Pressable>
         </View>
+
+        {!canControlStream && (
+          <Text style={styles.permGated}>{t("operator.permGated")}</Text>
+        )}
 
         <Text style={styles.osmoTip}>{t("operator.osmoTip")}</Text>
       </LinearGradient>
@@ -262,5 +277,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     textAlign: "center",
     fontStyle: "italic",
+  },
+  permGated: {
+    color: BridgeColors.AccentAmber,
+    fontFamily: Mono.fontFamily,
+    fontSize: 11,
+    letterSpacing: 0.6,
+    textAlign: "center",
   },
 });
