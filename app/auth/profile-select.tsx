@@ -1,13 +1,9 @@
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { t } from "@/i18n";
 import { useSession } from "@/store/session.store";
 import type { Profile } from "@/backend";
-import {
-  BridgeCard,
-  BridgeColors,
-  Mono,
-  TopBar,
-} from "@/ui";
+import { BridgeCard, BridgeColors, Mono, ScreenHeader } from "@/ui";
 
 export default function ProfileSelectScreen() {
   const { profiles, selectProfile, logout } = useSession();
@@ -15,12 +11,9 @@ export default function ProfileSelectScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       <View style={styles.body}>
-        <TopBar />
-        <Text style={styles.hero}>PICK A PROFILE</Text>
-        <Text style={styles.heroSub}>
-          Each profile carries its own destinations, overlays, and permission
-          presets. Tap one to continue.
-        </Text>
+        <ScreenHeader title={t("topBar.title")} onBack={logout} />
+        <Text style={styles.hero}>{t("profileSelect.title")}</Text>
+        <Text style={styles.heroSub}>{t("profileSelect.subtitle")}</Text>
 
         <FlatList
           data={profiles}
@@ -31,18 +24,16 @@ export default function ProfileSelectScreen() {
           )}
           ListEmptyComponent={
             <BridgeCard accent={BridgeColors.AccentAmber}>
-              <Text style={styles.empty}>
-                No profiles yet. Tap "Create profile" to add one.
-              </Text>
+              <Text style={styles.empty}>{t("profileSelect.empty")}</Text>
             </BridgeCard>
           }
         />
 
         <Pressable style={styles.create} onPress={() => {}}>
-          <Text style={styles.createTxt}>+ CREATE PROFILE</Text>
+          <Text style={styles.createTxt}>{t("profileSelect.createProfile")}</Text>
         </Pressable>
         <Pressable onPress={logout} style={{ alignSelf: "center", padding: 8 }}>
-          <Text style={styles.logout}>SIGN OUT</Text>
+          <Text style={styles.logout}>{t("common.signOut")}</Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -70,7 +61,7 @@ function ProfileRow({
             <Text style={styles.handle}>
               {profile.handle}
               {profile.lastRole
-                ? ` · last as ${profile.lastRole.toUpperCase()}`
+                ? ` · ${t("profileSelect.lastAs")}: ${profile.lastRole.toUpperCase()}`
                 : ""}
             </Text>
           </View>
@@ -90,7 +81,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "900",
     letterSpacing: 2,
-    marginTop: 18,
+    marginTop: 12,
   },
   heroSub: {
     color: BridgeColors.TextTertiary,

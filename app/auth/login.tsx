@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { t } from "@/i18n";
 import { useSession } from "@/store/session.store";
 import { BridgeCard, BridgeColors, Mono, TopBar } from "@/ui";
 
@@ -26,7 +27,7 @@ export default function LoginScreen() {
     try {
       await login(email, password);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Login failed");
+      setError(e instanceof Error ? e.message : t("login.error"));
     } finally {
       setBusy(false);
     }
@@ -40,14 +41,11 @@ export default function LoginScreen() {
       >
         <View style={styles.body}>
           <TopBar />
-          <Text style={styles.hero}>SIGN IN</Text>
-          <Text style={styles.heroSub}>
-            Phase-0 mock login — any credentials succeed. Your real Nexo SSO
-            replaces this once the backend ships.
-          </Text>
+          <Text style={styles.hero}>{t("login.title")}</Text>
+          <Text style={styles.heroSub}>{t("login.subtitle")}</Text>
 
           <BridgeCard>
-            <Text style={styles.label}>EMAIL</Text>
+            <Text style={styles.label}>{t("login.email")}</Text>
             <TextInput
               value={email}
               onChangeText={setEmail}
@@ -58,7 +56,7 @@ export default function LoginScreen() {
               style={styles.input}
             />
             <View style={{ height: 12 }} />
-            <Text style={styles.label}>PASSWORD</Text>
+            <Text style={styles.label}>{t("login.password")}</Text>
             <TextInput
               value={password}
               onChangeText={setPassword}
@@ -68,9 +66,7 @@ export default function LoginScreen() {
             />
           </BridgeCard>
 
-          {error && (
-            <Text style={styles.error}>{error}</Text>
-          )}
+          {error && <Text style={styles.error}>{error}</Text>}
 
           <Pressable
             onPress={onSubmit}
@@ -80,14 +76,11 @@ export default function LoginScreen() {
             {busy ? (
               <ActivityIndicator color={BridgeColors.Background} />
             ) : (
-              <Text style={styles.ctaTxt}>SIGN IN</Text>
+              <Text style={styles.ctaTxt}>{t("login.cta")}</Text>
             )}
           </Pressable>
 
-          <Text style={styles.footer}>
-            By signing in you agree to the Nexo creator terms. Local-only data
-            in Phase 0 — nothing leaves your device.
-          </Text>
+          <Text style={styles.footer}>{t("login.footer")}</Text>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

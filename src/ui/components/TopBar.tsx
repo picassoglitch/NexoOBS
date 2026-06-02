@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { t } from "@/i18n";
 import { BridgeColors, Mono } from "../theme/colors";
 
 interface Props {
@@ -12,8 +13,8 @@ interface Props {
 }
 
 export function TopBar({
-  title = "NEXO·AI WORLD",
-  subtitle = "MOBILE BROADCAST OS",
+  title = t("topBar.title"),
+  subtitle = t("topBar.subtitle"),
   onSettings,
   glyph = "N",
 }: Props) {

@@ -40,6 +40,8 @@ interface SessionActions {
   selectRole: (role: Role) => Promise<void>;
   /** Drops the role choice but keeps the profile (returns to the lobby). */
   clearRole: () => Promise<void>;
+  /** Drops the picked profile (returns to the profile picker). */
+  clearProfile: () => Promise<void>;
 }
 
 const Ctx = createContext<(SessionState & SessionActions) | null>(null);
@@ -184,6 +186,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     safeSet({ role: null, phase: "needsRole" });
   }, [safeSet]);
 
+  const clearProfile = useCallback<
+    SessionActions["clearProfile"]
+  >(async () => {
+    await Promise.all([kv.remove(PROFILE_KEY), kv.remove(ROLE_KEY)]);
+    safeSet({ profile: null, role: null, phase: "needsProfile" });
+  }, [safeSet]);
+
   const value = useMemo(
     () => ({
       ...state,
@@ -193,8 +202,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       selectProfile,
       selectRole,
       clearRole,
+      clearProfile,
     }),
-    [state, login, logout, refreshProfiles, selectProfile, selectRole, clearRole],
+    [
+      state,
+      login,
+      logout,
+      refreshProfiles,
+      selectProfile,
+      selectRole,
+      clearRole,
+      clearProfile,
+    ],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

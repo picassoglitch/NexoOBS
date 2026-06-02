@@ -1,6 +1,7 @@
 export { BridgeCard } from "./components/BridgeCard";
 export { GoLiveButton } from "./components/GoLiveButton";
 export { QuickPill } from "./components/QuickPill";
+export { ScreenHeader } from "./components/ScreenHeader";
 export { Segmented } from "./components/Segmented";
 export { StatusChip } from "./components/StatusChip";
 export { TopBar } from "./components/TopBar";

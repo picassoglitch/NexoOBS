@@ -1,62 +1,59 @@
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import { t } from "@/i18n";
 import { useSession } from "@/store/session.store";
 import type { Role } from "@/backend";
-import { BridgeCard, BridgeColors, Mono, TopBar } from "@/ui";
+import { BridgeColors, Mono, ScreenHeader } from "@/ui";
 
 const isIOS = Platform.OS === "ios";
 
 export default function LobbyScreen() {
-  const { profile, selectRole, logout } = useSession();
+  const { profile, selectRole, clearProfile, logout } = useSession();
+
+  const subtitle = profile?.name
+    ? t("lobby.subtitleNamed", { name: profile.name })
+    : t("lobby.subtitle");
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       <View style={styles.body}>
-        <TopBar />
+        <ScreenHeader title={t("topBar.title")} onBack={clearProfile} />
 
-        <Text style={styles.hero}>WHO ARE YOU TODAY?</Text>
-        <Text style={styles.heroSub}>
-          {profile?.name
-            ? `${profile.name}, pick the role you'll play in this session.`
-            : "Pick the role you'll play in this session."}
-        </Text>
+        <Text style={styles.hero}>{t("lobby.title")}</Text>
+        <Text style={styles.heroSub}>{subtitle}</Text>
 
         <RoleCard
           id="streamer"
-          title="STREAMER"
-          subtitle="Remote preview · chat · permission control"
+          title={t("lobby.streamer.title")}
+          subtitle={t("lobby.streamer.sub")}
           bullets={[
-            "Available on iPhone + Android",
-            "Approve operator chat replies",
-            "Switch destinations + overlays mid-stream",
+            t("lobby.streamer.bulletA"),
+            t("lobby.streamer.bulletB"),
+            t("lobby.streamer.bulletC"),
           ]}
           accent={BridgeColors.Primary}
           onPick={() => selectRole("streamer")}
         />
         <RoleCard
           id="operator"
-          title="CAMERA OPERATOR"
-          subtitle="UVC preview · live chat overlay · stream health"
+          title={t("lobby.operator.title")}
+          subtitle={t("lobby.operator.sub")}
           bullets={[
             isIOS
-              ? "Android-only — iOS can't host USB cameras"
-              : "Wires the Osmo Pocket 3 via USB-C UVC",
-            "Streams to platforms you've authorised",
-            "Reply to chat only when streamer grants permission",
+              ? t("lobby.operator.bulletUsbAndroid")
+              : t("lobby.operator.bulletUsbConnect"),
+            t("lobby.operator.bulletStreams"),
+            t("lobby.operator.bulletChatPerm"),
           ]}
           accent={BridgeColors.Magenta}
           onPick={() => selectRole("operator")}
-          warning={
-            isIOS
-              ? "Operator mode requires Android — Apple doesn't allow USB UVC."
-              : undefined
-          }
+          warning={isIOS ? t("lobby.operator.iosWarning") : undefined}
         />
 
         <View style={{ flex: 1 }} />
         <Pressable onPress={logout} style={{ alignSelf: "center", padding: 8 }}>
-          <Text style={styles.logout}>SIGN OUT</Text>
+          <Text style={styles.logout}>{t("common.signOut")}</Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -82,7 +79,7 @@ function RoleCard({
   warning,
 }: RoleCardProps) {
   return (
-    <Pressable onPress={onPick} disabled={!!warning && false}>
+    <Pressable onPress={onPick}>
       <LinearGradient
         colors={[`${accent}22`, BridgeColors.Surface]}
         start={{ x: 0, y: 0 }}
@@ -117,7 +114,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "900",
     letterSpacing: 2,
-    marginTop: 20,
+    marginTop: 12,
   },
   heroSub: {
     color: BridgeColors.TextTertiary,

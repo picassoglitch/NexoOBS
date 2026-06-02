@@ -1,41 +1,38 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { t } from "@/i18n";
 import { useSession } from "@/store/session.store";
-import { BridgeCard, BridgeColors, Mono, TopBar } from "@/ui";
+import { BridgeCard, BridgeColors, Mono, ScreenHeader } from "@/ui";
 
-/**
- * Placeholder — real Streamer dashboard lands in commit 4 with remote
- * preview, chat drawer, permission toggles, and destinations.
- */
 export default function StreamerHome() {
   const { profile, clearRole, logout } = useSession();
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       <View style={styles.body}>
-        <TopBar onSettings={() => {}} />
+        <ScreenHeader title={t("streamer.title")} onBack={clearRole} />
 
-        <Text style={styles.hero}>STREAMER MODE</Text>
         <Text style={styles.heroSub}>
-          {profile?.name ? `Signed in as ${profile.name}.` : ""} Phase-0 home —
-          commit 4 layers in the live dashboard, chat drawer, and permission
-          toggles.
+          {profile?.name ? t("streamer.signedInAs", { name: profile.name }) : ""}{" "}
+          {t("streamer.phase0Hint")}
         </Text>
 
         <BridgeCard accent={BridgeColors.Primary}>
-          <Text style={styles.cardTitle}>UP NEXT IN PHASE 0</Text>
-          <Text style={styles.bullet}>· Streamer dashboard (commit 4)</Text>
-          <Text style={styles.bullet}>· Real Kick chat (commit 5)</Text>
-          <Text style={styles.bullet}>· Permission toggles (commit 6)</Text>
+          <Text style={[styles.cardTitle, { color: BridgeColors.Primary }]}>
+            {t("streamer.upNext")}
+          </Text>
+          <Text style={styles.bullet}>· {t("streamer.bulletDashboard")}</Text>
+          <Text style={styles.bullet}>· {t("streamer.bulletChat")}</Text>
+          <Text style={styles.bullet}>· {t("streamer.bulletPerms")}</Text>
         </BridgeCard>
 
         <View style={{ flex: 1 }} />
         <View style={styles.row}>
           <Pressable onPress={clearRole} style={styles.linkBtn}>
-            <Text style={styles.linkTxt}>SWITCH ROLE</Text>
+            <Text style={styles.linkTxt}>{t("streamer.switchRole")}</Text>
           </Pressable>
           <Pressable onPress={logout} style={styles.linkBtn}>
-            <Text style={styles.linkTxt}>SIGN OUT</Text>
+            <Text style={styles.linkTxt}>{t("common.signOut")}</Text>
           </Pressable>
         </View>
       </View>
@@ -46,21 +43,13 @@ export default function StreamerHome() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BridgeColors.Background },
   body: { flex: 1, paddingHorizontal: 16, paddingTop: 8, gap: 14 },
-  hero: {
-    color: BridgeColors.TextPrimary,
-    fontFamily: Mono.fontFamily,
-    fontSize: 22,
-    fontWeight: "900",
-    letterSpacing: 2,
-    marginTop: 20,
-  },
   heroSub: {
     color: BridgeColors.TextTertiary,
     fontSize: 12,
     lineHeight: 17,
+    marginTop: 8,
   },
   cardTitle: {
-    color: BridgeColors.Primary,
     fontFamily: Mono.fontFamily,
     fontWeight: "900",
     fontSize: 11,
