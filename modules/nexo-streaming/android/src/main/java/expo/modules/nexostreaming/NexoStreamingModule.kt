@@ -36,6 +36,12 @@ class NexoStreamingModule : Module() {
         }
 
         AsyncFunction("start") { _input: Map<String, Any?> ->
+            // Phase 1.A scaffold: emit onError + resolve, no throw. Throwing
+            // from the lambda body makes Kotlin infer the AsyncFunction's
+            // reified return type as Nothing, which fails to compile
+            // ("Cannot use 'Nothing' as reified type parameter"). JS consumers
+            // call isReady() first; anything that still reaches start() gets
+            // a structured event for visibility.
             Log.i(TAG, "start() called — Phase 1.A scaffold, not yet implemented")
             sendEvent(
                 "onError",
@@ -44,7 +50,6 @@ class NexoStreamingModule : Module() {
                     "code" to "not_implemented",
                 ),
             )
-            throw Exception("not_implemented")
         }
 
         AsyncFunction("stop") {
