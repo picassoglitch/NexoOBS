@@ -3,6 +3,7 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SessionProvider } from "@/store/session.store";
+import { SessionRouter } from "@/store/SessionRouter";
 import { BridgeColors } from "@/ui";
 
 export default function RootLayout() {
@@ -11,6 +12,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <StatusBar style="light" backgroundColor={BridgeColors.Background} />
         <SessionProvider>
+          <SessionRouter />
           <Stack
             screenOptions={{
               headerShown: false,
