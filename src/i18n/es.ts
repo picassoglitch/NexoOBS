@@ -22,6 +22,8 @@ export const es = {
     email: "CORREO",
     password: "CONTRASEÑA",
     cta: "INICIAR SESIÓN",
+    or: "O",
+    google: "CONTINUAR CON GOOGLE",
     noAccount: "¿No tienes cuenta? Créala en nexo-ai.world",
     footer:
       "NexoStreamOBS (NSO) es un engine de Nexo-AI World. Tus credenciales y perfil viven en Nexo — aquí solo se reflejan.",

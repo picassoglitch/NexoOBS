@@ -18,10 +18,10 @@ import { BridgeCard, BridgeColors, Mono, TopBar } from "@/ui";
 const SIGNUP_URL = "https://nexo-ai.world/sign-up";
 
 export default function LoginScreen() {
-  const { signIn } = useSession();
+  const { signIn, signInWithGoogle } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"none" | "password" | "google">("none");
   const [error, setError] = useState<string | null>(null);
 
   async function onSubmit() {
@@ -29,14 +29,26 @@ export default function LoginScreen() {
       setError(t("login.error"));
       return;
     }
-    setBusy(true);
+    setBusy("password");
     setError(null);
     try {
       await signIn(email, password);
     } catch (e) {
       setError(e instanceof Error ? e.message : t("login.error"));
     } finally {
-      setBusy(false);
+      setBusy("none");
+    }
+  }
+
+  async function onGoogle() {
+    setBusy("google");
+    setError(null);
+    try {
+      await signInWithGoogle();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("login.error"));
+    } finally {
+      setBusy("none");
     }
   }
 
@@ -81,13 +93,34 @@ export default function LoginScreen() {
 
           <Pressable
             onPress={onSubmit}
-            disabled={busy}
-            style={[styles.cta, busy && styles.ctaDisabled]}
+            disabled={busy !== "none"}
+            style={[styles.cta, busy !== "none" && styles.ctaDisabled]}
           >
-            {busy ? (
+            {busy === "password" ? (
               <ActivityIndicator color={BridgeColors.Background} />
             ) : (
               <Text style={styles.ctaTxt}>{t("login.cta")}</Text>
+            )}
+          </Pressable>
+
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerTxt}>{t("login.or")}</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <Pressable
+            onPress={onGoogle}
+            disabled={busy !== "none"}
+            style={[styles.googleCta, busy !== "none" && styles.ctaDisabled]}
+          >
+            {busy === "google" ? (
+              <ActivityIndicator color={BridgeColors.TextPrimary} />
+            ) : (
+              <>
+                <Text style={styles.googleGlyph}>G</Text>
+                <Text style={styles.googleTxt}>{t("login.google")}</Text>
+              </>
             )}
           </Pressable>
 
@@ -159,6 +192,48 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     fontSize: 14,
     letterSpacing: 2,
+  },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginVertical: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: BridgeColors.Border,
+  },
+  dividerTxt: {
+    color: BridgeColors.TextTertiary,
+    fontFamily: Mono.fontFamily,
+    fontSize: 10,
+    letterSpacing: 1.5,
+  },
+  googleCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: BridgeColors.SurfaceElevated,
+    borderWidth: 1,
+    borderColor: BridgeColors.Border,
+    gap: 12,
+  },
+  googleGlyph: {
+    color: "#FFF",
+    fontFamily: Mono.fontFamily,
+    fontWeight: "900",
+    fontSize: 18,
+    letterSpacing: 0,
+  },
+  googleTxt: {
+    color: BridgeColors.TextPrimary,
+    fontFamily: Mono.fontFamily,
+    fontWeight: "800",
+    fontSize: 13,
+    letterSpacing: 1.5,
   },
   noAccountBtn: { alignSelf: "center", padding: 6 },
   noAccountTxt: {

@@ -33,6 +33,10 @@ export const supabase = createClient(
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false, // mobile — no URL fragment
+      // PKCE is the right flow for native + deep links — the callback URL
+      // returns ?code=... and we exchange it for a session. Explicit even
+      // though it's the v2 default.
+      flowType: "pkce",
     },
   },
 );

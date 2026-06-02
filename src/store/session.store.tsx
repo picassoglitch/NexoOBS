@@ -10,6 +10,7 @@ import {
 } from "react";
 import { backend } from "@/backend";
 import type { NexoSession, OperatorRole } from "@/backend";
+import { signInWithGoogle as googleSignIn } from "@/lib/auth/google";
 import { kv } from "@/store/kv";
 
 const ROLE_KEY = "nexo.activeRole.v1";
@@ -31,6 +32,7 @@ export interface SessionState {
 
 interface SessionActions {
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   selectRole: (role: OperatorRole) => Promise<void>;
   /** Drops the role choice but keeps the auth (back from a role home). */
@@ -116,6 +118,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [safeSet],
   );
 
+  const signInWithGoogle = useCallback<
+    SessionActions["signInWithGoogle"]
+  >(async () => {
+    safeSet({ error: null });
+    await googleSignIn();
+    // onAuthChange listener (set up above) picks the new session up async;
+    // we don't need to set state here. Phase transitions to needsRole as
+    // soon as the listener fires.
+  }, [safeSet]);
+
   const signOut = useCallback<SessionActions["signOut"]>(async () => {
     await backend.signOut().catch(() => {});
     await kv.remove(ROLE_KEY);
@@ -136,8 +148,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [safeSet]);
 
   const value = useMemo(
-    () => ({ ...state, signIn, signOut, selectRole, clearRole }),
-    [state, signIn, signOut, selectRole, clearRole],
+    () => ({
+      ...state,
+      signIn,
+      signInWithGoogle,
+      signOut,
+      selectRole,
+      clearRole,
+    }),
+    [state, signIn, signInWithGoogle, signOut, selectRole, clearRole],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

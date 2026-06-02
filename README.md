@@ -46,6 +46,18 @@ npm run start:go     # stock Expo Go path (no native modules)
 
 Scan the QR with **Expo Go** on your iPhone or Samsung S22 Ultra. Edit any `.tsx` and the app hot-reloads on the device.
 
+## Google OAuth setup (one-time, Supabase dashboard)
+
+NSO signs in via the Nexo-AI World Supabase project. For the "Continuar con Google" button to bounce back to the app after sign-in, the runtime redirect URI must be in the project's redirect-URL allowlist.
+
+1. Open https://supabase.com/dashboard/project/uqcbziwdgbnzehipzjxp/auth/url-configuration
+2. Under **Redirect URLs**, add (one per line, wildcards allowed):
+   - `nexoaiworld://**` — dev client + standalone builds
+   - `exp://**` — Expo Go (the host:port part changes per LAN session)
+3. Save.
+
+The Diagnostics screen (⚙ icon → APLICACIÓN section → `oauth redirect`) shows the exact URI for the current runtime so you can verify the format matches what's in the allowlist.
+
 ## Dev build (Phase 1+ — required for RTMP / UVC)
 
 ```bash

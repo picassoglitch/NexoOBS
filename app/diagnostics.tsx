@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import * as Clipboard from "expo-clipboard";
+import * as Linking from "expo-linking";
 import { t } from "@/i18n";
 import { useSession } from "@/store/session.store";
 import { usePermissions } from "@/store/permissions.store";
@@ -53,6 +54,7 @@ export default function DiagnosticsScreen() {
   // Expo Go is still serving the cached manifest after an app.json rename.
   const appName =
     (Constants.expoConfig?.name as string | undefined) ?? "NexoStreamOBS";
+  const oauthRedirect = Linking.createURL("auth/callback");
   const appVersion =
     (Constants.expoConfig?.version as string | undefined) ?? "0.0.0";
   const sdkVersion = Constants.expoConfig?.sdkVersion ?? "?";
@@ -103,6 +105,7 @@ export default function DiagnosticsScreen() {
           <Row label="version" value={appVersion} />
           <Row label="expo sdk" value={String(sdkVersion)} />
           <Row label="runtime" value={runtimeLabel()} highlight />
+          <Row label="oauth redirect" value={oauthRedirect} mono />
         </Section>
 
         <Section title={t("diagnostics.sectionDevice")}>
