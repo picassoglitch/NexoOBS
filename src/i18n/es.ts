@@ -52,14 +52,18 @@ export const es = {
     },
   },
   chat: {
-    title: "CHAT EN VIVO · KICK",
+    title: "TU CHAT · KICK",
     connect: "CONECTAR",
     expand: "ABRIR",
     emptyHint:
-      "Esperando mensajes… Si no llegan, comprueba que el canal exista y esté transmitiendo.",
-    overlayHint: "Chat de kick.com/{channel} · toca para abrir",
+      "Esperando mensajes de tus espectadores… Si tu canal está offline también verás el chat en vivo cuando alguien escriba.",
+    notConfigured:
+      "Aún no has conectado tu canal de Kick. Escribe tu slug abajo (ej: el nombre que aparece en kick.com/TU_CANAL).",
+    overlayHintUnconfigured:
+      "Configura tu canal de Kick · toca para abrir",
+    overlayHint: "Tu chat en kick.com/{channel} · toca para abrir",
     status: {
-      idle: "INACTIVO",
+      idle: "SIN CONFIGURAR",
       connecting: "CONECTANDO…",
       open: "EN VIVO",
       reconnecting: "RECONECTANDO…",

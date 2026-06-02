@@ -23,13 +23,15 @@ export function ChatList({ messages, status, channel, error }: Props) {
     });
   }, [messages]);
 
+  const isConfigured = channel.trim().length > 0;
+
   return (
     <View style={styles.shell}>
       <View style={styles.header}>
         <View
           style={[styles.dot, { backgroundColor: statusColor(status) }]}
         />
-        <Text style={styles.channel}>kick.com/{channel || "—"}</Text>
+        <Text style={styles.channel}>kick.com/{channel || "…"}</Text>
         <Text style={styles.status}>{statusLabel(status)}</Text>
       </View>
       {error && <Text style={styles.error}>{error}</Text>}
@@ -42,7 +44,9 @@ export function ChatList({ messages, status, channel, error }: Props) {
         ListEmptyComponent={
           !error ? (
             <View style={styles.empty}>
-              <Text style={styles.emptyTxt}>{t("chat.emptyHint")}</Text>
+              <Text style={styles.emptyTxt}>
+                {isConfigured ? t("chat.emptyHint") : t("chat.notConfigured")}
+              </Text>
             </View>
           ) : null
         }

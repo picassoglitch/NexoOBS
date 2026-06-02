@@ -14,8 +14,9 @@ import { kv } from "./kv";
 
 const MAX_MESSAGES = 250;
 const CHANNEL_KEY = "nexo.chat.kickChannel.v1";
-/** Demo default — public, always-live, lots of messages. Swappable in-app. */
-const DEFAULT_KICK_CHANNEL = "trainwreckstv";
+/** No demo default — the user's own Kick channel slug. They set it in the
+ *  destinations screen (commit 6) or directly in the chat input until then. */
+const DEFAULT_KICK_CHANNEL = "";
 
 interface ChatRuntime {
   messages: ChatMessage[];
@@ -43,9 +44,12 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
-  // Connect / reconnect whenever the channel changes.
+  // Connect / reconnect whenever the channel changes. Empty channel = unconfigured.
   useEffect(() => {
-    if (!channel) return;
+    if (!channel || channel.trim().length === 0) {
+      setStatus("idle");
+      return;
+    }
     const provider = new KickProvider();
     providerRef.current = provider;
     setError(null);

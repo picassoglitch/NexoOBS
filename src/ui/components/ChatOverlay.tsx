@@ -35,7 +35,9 @@ export function ChatOverlay({ onExpand }: Props) {
           </Text>
         ) : (
           <Text style={styles.placeholder} numberOfLines={1}>
-            {t("chat.overlayHint", { channel })}
+            {channel.trim().length === 0
+              ? t("chat.overlayHintUnconfigured")
+              : t("chat.overlayHint", { channel })}
           </Text>
         )}
       </View>

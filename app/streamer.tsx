@@ -83,7 +83,11 @@ export default function StreamerHome() {
           />
           <StatusChip
             label={t("chips.chat")}
-            value={`KICK·${kickChannel.toUpperCase()}`}
+            value={
+              kickChannel.trim().length > 0
+                ? `KICK·${kickChannel.toUpperCase()}`
+                : "KICK·SIN CANAL"
+            }
             health={
               kickStatus === "open"
                 ? "good"
