@@ -23,11 +23,15 @@ import { PLATFORM_META } from "@/destinations/types";
 import { BridgeCard, BridgeColors, Mono, ScreenHeader } from "@/ui";
 
 function runtimeLabel(): string {
+  // Web's executionEnvironment is "bare" historically — distinguish it so the
+  // diagnostics line is useful, not technically-correct-but-meaningless.
+  if (Platform.OS === "web") return t("diagnostics.runtimeWeb");
   switch (Constants.executionEnvironment) {
     case ExecutionEnvironment.StoreClient:
       return t("diagnostics.runtimeExpoGo");
     case ExecutionEnvironment.Standalone:
-    case "bare":
+      return t("diagnostics.runtimeStandalone");
+    case ExecutionEnvironment.Bare:
       return t("diagnostics.runtimeBare");
     default:
       return t("diagnostics.runtimeDevClient");
@@ -45,7 +49,10 @@ export default function DiagnosticsScreen() {
   const isExpoGo =
     Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
-  const appName = (Constants.expoConfig?.name as string | undefined) ?? "Nexo-AI World";
+  // Fall back to the new brand instead of leaving us showing a stale value if
+  // Expo Go is still serving the cached manifest after an app.json rename.
+  const appName =
+    (Constants.expoConfig?.name as string | undefined) ?? "NexoStreamOBS";
   const appVersion =
     (Constants.expoConfig?.version as string | undefined) ?? "0.0.0";
   const sdkVersion = Constants.expoConfig?.sdkVersion ?? "?";
