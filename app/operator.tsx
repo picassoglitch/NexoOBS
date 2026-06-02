@@ -1,76 +1,263 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { t } from "@/i18n";
 import { useSession } from "@/store/session.store";
-import { BridgeCard, BridgeColors, Mono, ScreenHeader } from "@/ui";
+import {
+  BridgeColors,
+  HealthBar,
+  Mono,
+  ScreenHeader,
+} from "@/ui";
 
-export default function OperatorHome() {
+/**
+ * Camera Operator live view. In Phase 0 (Expo Go) we point the phone camera
+ * via expo-camera; in Phase 2 (dev build) the Osmo Pocket 3 UVC source takes
+ * over via the CameraSource interface. The layout is full-bleed preview with
+ * floating HUD overlays so the operator can monitor live without occluding
+ * the frame more than necessary.
+ */
+export default function OperatorLive() {
   const { session, clearRole, signOut } = useSession();
-  const name =
-    session?.fullName ?? session?.email?.split("@")[0] ?? null;
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
+  const [isLive, setIsLive] = useState(false);
+
+  const name = session?.fullName ?? session?.email?.split("@")[0] ?? null;
+
+  // Lazy-load CameraView so iOS / web (no UVC + Apple's USB block) doesn't
+  // try to negotiate before we even render.
+  const { CameraView, useCameraPermissions } = require("expo-camera") as
+    typeof import("expo-camera");
+  const [permission, requestPermission] = useCameraPermissions();
+
+  if (permission && !permission.granted && permission.canAskAgain) {
+    void requestPermission();
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <View style={styles.body}>
-        <ScreenHeader title={t("operator.title")} onBack={clearRole} />
-
-        <Text style={styles.heroSub}>
-          {name ? t("operator.signedInAs", { name }) : ""}{" "}
-          {t("operator.phase0Hint")}
-        </Text>
-
-        <BridgeCard accent={BridgeColors.Magenta}>
-          <Text style={[styles.cardTitle, { color: BridgeColors.Magenta }]}>
-            {t("operator.upNext")}
+      {/* Full-bleed camera surface. */}
+      {permission?.granted ? (
+        <CameraView style={StyleSheet.absoluteFill} mode="video" facing="back" />
+      ) : (
+        <View style={[StyleSheet.absoluteFill, styles.permFallback]}>
+          <Text style={styles.permTitle}>
+            {permission?.canAskAgain === false
+              ? t("camera.permDenied")
+              : t("camera.permRequest")}
           </Text>
-          <Text style={styles.bullet}>· {t("operator.bulletLive")}</Text>
-          <Text style={styles.bullet}>· {t("operator.bulletChat")}</Text>
-          <Text style={styles.bullet}>· {t("operator.bulletPerms")}</Text>
-        </BridgeCard>
+          <Text style={styles.permHint}>{t("camera.permHint")}</Text>
+        </View>
+      )}
 
-        <View style={{ flex: 1 }} />
-        <View style={styles.row}>
-          <Pressable onPress={clearRole} style={styles.linkBtn}>
-            <Text style={styles.linkTxt}>{t("streamer.switchRole")}</Text>
-          </Pressable>
-          <Pressable onPress={signOut} style={styles.linkBtn}>
-            <Text style={styles.linkTxt}>{t("common.signOut")}</Text>
+      {/* Top overlay — header, source, chips. */}
+      <LinearGradient
+        colors={["rgba(0,0,0,0.85)", "rgba(0,0,0,0)"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={[styles.topOverlay, isLandscape && styles.topOverlayLandscape]}
+        pointerEvents="box-none"
+      >
+        <ScreenHeader
+          title={t("operator.title")}
+          onBack={clearRole}
+          right={
+            <Pressable onPress={signOut} hitSlop={8}>
+              <Text style={styles.signOutPill}>{t("common.signOut")}</Text>
+            </Pressable>
+          }
+        />
+        {name && (
+          <Text style={styles.greeting}>
+            {t("operator.signedInAs", { name })}
+          </Text>
+        )}
+        <View style={styles.sourceRow}>
+          <Text style={styles.sourceLabel}>{t("operator.sourceLabel")}</Text>
+          <Text style={styles.sourceValue}>
+            {Platform.OS === "ios"
+              ? t("values.phoneCam")
+              : t("values.phoneCam")}
+          </Text>
+        </View>
+      </LinearGradient>
+
+      {/* Bottom overlay — health bar, chat peek, big stop CTA. */}
+      <LinearGradient
+        colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.9)"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={[styles.bottomOverlay, isLandscape && styles.bottomOverlayLandscape]}
+        pointerEvents="box-none"
+      >
+        <HealthBar
+          cells={[
+            { label: t("operator.healthBitrate"), value: "—", highlight: "warn" },
+            { label: t("operator.healthFps"), value: "—" },
+            { label: t("operator.healthDrops"), value: "0", highlight: "good" },
+            { label: t("operator.healthRtt"), value: "—" },
+            { label: t("operator.healthBat"), value: "—" },
+          ]}
+        />
+
+        <View style={styles.chatPeek}>
+          <Text style={styles.chatPeekTxt}>{t("operator.chatPeek")}</Text>
+        </View>
+
+        <View style={styles.ctaRow}>
+          <Pressable
+            onPress={() => setIsLive((v) => !v)}
+            style={[
+              styles.cta,
+              {
+                borderColor: isLive
+                  ? BridgeColors.AccentRed
+                  : BridgeColors.AccentGreen,
+                backgroundColor: isLive
+                  ? "rgba(255, 77, 109, 0.18)"
+                  : "rgba(0, 255, 163, 0.18)",
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.ctaTxt,
+                {
+                  color: isLive
+                    ? BridgeColors.AccentRed
+                    : BridgeColors.AccentGreen,
+                },
+              ]}
+            >
+              {isLive ? t("streamer.stopStream") : t("streamer.goLive")}
+            </Text>
           </Pressable>
         </View>
-      </View>
+
+        <Text style={styles.osmoTip}>{t("operator.osmoTip")}</Text>
+      </LinearGradient>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: BridgeColors.Background },
-  body: { flex: 1, paddingHorizontal: 16, paddingTop: 8, gap: 14 },
-  heroSub: {
+  safe: { flex: 1, backgroundColor: "#000" },
+  permFallback: {
+    backgroundColor: BridgeColors.Background,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  permTitle: {
+    color: BridgeColors.TextPrimary,
+    fontFamily: Mono.fontFamily,
+    fontWeight: "700",
+    fontSize: 14,
+    letterSpacing: 1.5,
+    textAlign: "center",
+  },
+  permHint: {
     color: BridgeColors.TextTertiary,
     fontSize: 12,
-    lineHeight: 17,
     marginTop: 8,
+    textAlign: "center",
   },
-  cardTitle: {
+  topOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  topOverlayLandscape: { paddingTop: 8 },
+  greeting: {
+    color: BridgeColors.TextPrimary,
     fontFamily: Mono.fontFamily,
-    fontWeight: "900",
     fontSize: 11,
-    letterSpacing: 1.5,
-    marginBottom: 6,
+    marginTop: 6,
+    letterSpacing: 1,
   },
-  bullet: { color: BridgeColors.TextSecondary, fontSize: 12 },
-  row: {
+  sourceRow: {
     flexDirection: "row",
-    justifyContent: "center",
-    gap: 24,
-    paddingBottom: 16,
+    alignItems: "center",
+    marginTop: 8,
+    gap: 8,
   },
-  linkBtn: { padding: 8 },
-  linkTxt: {
+  sourceLabel: {
     color: BridgeColors.TextTertiary,
     fontFamily: Mono.fontFamily,
-    fontSize: 11,
-    letterSpacing: 1.5,
+    fontSize: 9,
+    letterSpacing: 1.2,
+  },
+  sourceValue: {
+    color: BridgeColors.Primary,
+    fontFamily: Mono.fontFamily,
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+  },
+  signOutPill: {
+    color: BridgeColors.TextTertiary,
+    fontFamily: Mono.fontFamily,
+    fontSize: 10,
     fontWeight: "700",
+    letterSpacing: 1.2,
+  },
+  bottomOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 16,
+    paddingTop: 32,
+    paddingBottom: 24,
+    gap: 12,
+  },
+  bottomOverlayLandscape: { paddingBottom: 12 },
+  chatPeek: {
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: BridgeColors.PrimarySoft,
+    padding: 10,
+  },
+  chatPeekTxt: {
+    color: BridgeColors.TextTertiary,
+    fontFamily: Mono.fontFamily,
+    fontSize: 10,
+    letterSpacing: 1.5,
+    textAlign: "center",
+  },
+  ctaRow: { flexDirection: "row", gap: 10 },
+  cta: {
+    flex: 1,
+    height: 56,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ctaTxt: {
+    fontFamily: Mono.fontFamily,
+    fontWeight: "900",
+    fontSize: 14,
+    letterSpacing: 2,
+  },
+  osmoTip: {
+    color: BridgeColors.TextTertiary,
+    fontSize: 10,
+    textAlign: "center",
+    fontStyle: "italic",
   },
 });
