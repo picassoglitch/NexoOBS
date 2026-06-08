@@ -20,7 +20,7 @@ export default async function DashboardPage() {
           <h1 className="text-xl font-bold mb-2">Base de datos no configurada</h1>
           <p className="text-text-tertiary text-sm">
             Falta <code className="font-mono">NEXOOBS_SUPABASE_URL</code> y{" "}
-            <code className="font-mono">NEXOOBS_SUPABASE_SERVICE_ROLE_KEY</code>{" "}
+            <code className="font-mono">NEXOOBS_SUPABASE_SECRET_KEY</code>{" "}
             en Railway. El multi-tenant no puede cargar sin ellas.
           </p>
         </div>

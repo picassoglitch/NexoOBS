@@ -3,36 +3,43 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Server-only Supabase admin client for the shared Nexo-AI World project.
- * Uses the service-role key — it bypasses RLS, so EVERY query in this app
- * MUST filter by tenant_id (sourced from the verified session cookie). The
- * service key never reaches the browser; all data access goes through
- * Server Components / Server Actions / route handlers.
  *
- * Naming follows the NEXOOBS_* convention. The URL is the same Nexo-AI
- * World project that mints SSO tokens; the service-role key is its own
- * secret (NOT the anon key — we need to write to nexoobs_* tables).
+ * Uses the new-format SECRET key (sb_secret_...), which replaces the legacy
+ * `service_role` JWT. It bypasses RLS, so EVERY query in this app MUST filter
+ * by tenant_id (sourced from the verified session cookie). The key never
+ * reaches the browser — all data access goes through Server Components /
+ * Server Actions / route handlers.
+ *
+ * Env: NEXOOBS_SUPABASE_SECRET_KEY (new format). Falls back to the legacy
+ * NEXOOBS_SUPABASE_SERVICE_ROLE_KEY name so either value works during the
+ * migration window. The publishable key (sb_publishable_...) is NOT used —
+ * we need elevated writes to the nexoobs_* tables.
  */
+
+function secretKey(): string | undefined {
+  return (
+    process.env.NEXOOBS_SUPABASE_SECRET_KEY ??
+    process.env.NEXOOBS_SUPABASE_SERVICE_ROLE_KEY
+  );
+}
 
 let cached: SupabaseClient | null = null;
 
 export function getSupabaseAdmin(): SupabaseClient {
   if (cached) return cached;
   const url = process.env.NEXOOBS_SUPABASE_URL;
-  const serviceKey = process.env.NEXOOBS_SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
+  const key = secretKey();
+  if (!url || !key) {
     throw new Error(
-      "Supabase not configured — set NEXOOBS_SUPABASE_URL + NEXOOBS_SUPABASE_SERVICE_ROLE_KEY",
+      "Supabase not configured — set NEXOOBS_SUPABASE_URL + NEXOOBS_SUPABASE_SECRET_KEY",
     );
   }
-  cached = createClient(url, serviceKey, {
+  cached = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   return cached;
 }
 
 export function isSupabaseConfigured(): boolean {
-  return Boolean(
-    process.env.NEXOOBS_SUPABASE_URL &&
-      process.env.NEXOOBS_SUPABASE_SERVICE_ROLE_KEY,
-  );
+  return Boolean(process.env.NEXOOBS_SUPABASE_URL && secretKey());
 }
