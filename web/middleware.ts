@@ -43,10 +43,11 @@ export const config = {
   matcher: [
     /*
      * Run on every request except:
-     *   - /api/admin/* — bearer-authenticated, NOT session
+     *   - /api/admin/*    — admin bearer, NOT session
+     *   - /api/internal/* — relay bearer, NOT session
      *   - Next.js internals
      *   - static assets
      */
-    "/((?!api/admin|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!api/admin|api/internal|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

@@ -105,6 +105,16 @@ export function EncoderPanel({
         </div>
       )}
 
+      {protocol === "rtmp" && (
+        <div className="mt-3">
+          <Field label="URL completa (cámaras de un solo campo)" value={ingest.fullRtmpUrl} />
+          <p className="text-[10px] text-text-tertiary mt-1.5 leading-relaxed">
+            Para DJI Osmo / Mimo, GoPro o el teléfono — que solo tienen un campo
+            de URL — pega esta. Ya incluye tu stream key.
+          </p>
+        </div>
+      )}
+
       <div className="mt-5 rounded-lg bg-accent-soft/40 border border-accent/30 p-3 flex items-center justify-between gap-3">
         <p className="text-xs text-text-secondary">
           ¿Evento importante?{" "}

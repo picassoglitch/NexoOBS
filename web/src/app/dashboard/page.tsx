@@ -34,12 +34,18 @@ export default async function DashboardPage() {
     getDestinations(tenantId),
   ]);
 
+  // The reachable RTMP endpoint of the relay (Railway TCP-proxy host:port).
+  // Set in Railway as NEXOOBS_RELAY_RTMP_URL.
+  const relayRtmp =
+    process.env.NEXOOBS_RELAY_RTMP_URL ?? "rtmp://ingest.nexo-ai.world/live";
+
   return (
     <DashboardClient
       initialTitle={tenantSession.title}
       initialIsLive={tenantSession.isLive}
       initialRecord={tenantSession.recordEnabled}
       initialStreamKey={tenantSession.streamKey}
+      relayRtmp={relayRtmp}
       destinations={destinations}
     />
   );

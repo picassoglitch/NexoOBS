@@ -250,3 +250,47 @@ export async function removeDestination(
     .eq("tenant_id", tenantId)
     .eq("id", id);
 }
+
+// ── Relay integration (called by the nexoclip-live MediaMTX hooks) ──────────
+
+/** Resolve a publish stream key → tenant. Used by /api/internal/live/authorize
+ *  so the relay knows whether to accept the push + whose destinations to fan
+ *  out to. Returns null for an unknown key (relay rejects). */
+export async function getTenantByStreamKey(
+  streamKey: string,
+): Promise<string | null> {
+  const db = getSupabaseAdmin();
+  const { data } = await db
+    .from("nexoobs_sessions")
+    .select("tenant_id")
+    .eq("stream_key", streamKey)
+    .maybeSingle();
+  return (data?.tenant_id as string | undefined) ?? null;
+}
+
+/** Fan-out targets for the relay: enabled + fully-configured destinations,
+ *  each as a complete RTMP push URL (ingest + key) the relay feeds to
+ *  `ffmpeg -c copy -f flv`. */
+export async function getFanoutDestinations(
+  tenantId: string,
+): Promise<{ platform: string; push_url: string }[]> {
+  const db = getSupabaseAdmin();
+  const { data } = await db
+    .from("nexoobs_destinations")
+    .select("platform_id, ingest_url, stream_key, enabled")
+    .eq("tenant_id", tenantId)
+    .eq("enabled", true);
+  return (data ?? [])
+    .filter(
+      (r) =>
+        ((r.ingest_url as string) ?? "").trim().length > 0 &&
+        ((r.stream_key as string) ?? "").trim().length > 0,
+    )
+    .map((r) => {
+      const base = (r.ingest_url as string).replace(/\/+$/, "");
+      return {
+        platform: r.platform_id as string,
+        push_url: `${base}/${r.stream_key as string}`,
+      };
+    });
+}

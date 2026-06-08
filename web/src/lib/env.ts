@@ -59,6 +59,16 @@ export function resolvePublicOrigin(request: Request): string {
   return new URL(request.url).origin;
 }
 
+/**
+ * Shared bearer the nexoclip-live relay presents on the internal live
+ * webhooks (/api/internal/live/*). Must equal the relay's
+ * NEXOCLIP_INTERNAL_SIGNING_SECRET. Separate from the SSO/admin secrets —
+ * this is the NexoOBS ↔ relay trust boundary.
+ */
+export function readRelaySecret(): string | null {
+  return process.env.NEXOOBS_RELAY_SECRET ?? null;
+}
+
 /** List the env vars that are missing — used by the login page to tell
  *  operators exactly what to set in Railway. Returns [] when all present. */
 export function missingNexoEnvVars(): string[] {

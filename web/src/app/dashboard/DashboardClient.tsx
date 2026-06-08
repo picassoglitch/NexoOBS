@@ -28,6 +28,7 @@ interface Props {
   initialIsLive: boolean;
   initialRecord: boolean;
   initialStreamKey: string;
+  relayRtmp: string;
   destinations: Dest[];
 }
 
@@ -41,6 +42,7 @@ export function DashboardClient({
   initialIsLive,
   initialRecord,
   initialStreamKey,
+  relayRtmp,
   destinations,
 }: Props) {
   const router = useRouter();
@@ -69,7 +71,7 @@ export function DashboardClient({
     },
   );
 
-  const ingest = buildIngest(streamKey);
+  const ingest = buildIngest(streamKey, relayRtmp);
 
   return (
     <div className="flex flex-col min-h-dvh">
