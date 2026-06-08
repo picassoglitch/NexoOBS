@@ -8,6 +8,7 @@ import { ChannelsPanel } from "@/components/ChannelsPanel";
 import { Footer } from "@/components/Footer";
 import { buildIngest } from "@/lib/ingest";
 import { DestinationConfig, PlatformId } from "@/lib/destinations";
+import { ChannelPatch } from "@/components/ChannelEditModal";
 import {
   addDestinationAction,
   regenerateKeyAction,
@@ -16,6 +17,7 @@ import {
   toggleDestinationAction,
   toggleLiveAction,
   toggleRecordAction,
+  updateDestinationAction,
   updateTitlesAction,
 } from "./actions";
 
@@ -128,6 +130,12 @@ export function DashboardClient({
               startTransition(async () => {
                 applyOptimistic({ type: "remove", id });
                 await removeDestinationAction(id);
+                router.refresh();
+              });
+            }}
+            onSaveDestination={(id, patch: ChannelPatch) => {
+              startTransition(async () => {
+                await updateDestinationAction(id, patch);
                 router.refresh();
               });
             }}

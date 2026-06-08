@@ -1,6 +1,11 @@
 import "server-only";
 import { getSupabaseAdmin } from "./supabase";
-import { DestinationConfig, DestinationStatus, PlatformId } from "./destinations";
+import {
+  DestinationConfig,
+  DestinationStatus,
+  PLATFORM_META,
+  PlatformId,
+} from "./destinations";
 
 /**
  * Per-tenant data layer. Every function takes a tenantId (from the verified
@@ -156,12 +161,52 @@ export async function addDestination(
   platformId: PlatformId,
 ): Promise<void> {
   const db = getSupabaseAdmin();
+  // Seed the ingest URL from the platform's known hint so named platforms
+  // (Twitch/YouTube/Kick/Facebook) are pre-filled; the user only adds the
+  // stream key. custom_rtmp / custom_srt start empty for manual entry.
+  const ingestUrl = PLATFORM_META[platformId]?.ingestHint ?? "";
   await db.from("nexoobs_destinations").insert({
     tenant_id: tenantId,
     platform_id: platformId,
+    ingest_url: ingestUrl,
     enabled: false,
     status_kind: "offline",
   });
+}
+
+/** Update editable fields on a destination. Marks status 'offline' once a
+ *  stream key is present (configured but not live) so the row reads as ready
+ *  rather than erroring. Scoped by tenant. */
+export async function updateDestination(
+  tenantId: string,
+  id: string,
+  patch: {
+    channelHandle?: string;
+    streamTitle?: string;
+    ingestUrl?: string;
+    streamKey?: string;
+  },
+): Promise<void> {
+  const db = getSupabaseAdmin();
+  const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.channelHandle !== undefined) row.channel_handle = patch.channelHandle;
+  if (patch.streamTitle !== undefined) row.stream_title = patch.streamTitle;
+  if (patch.ingestUrl !== undefined) row.ingest_url = patch.ingestUrl;
+  if (patch.streamKey !== undefined) row.stream_key = patch.streamKey;
+  await db
+    .from("nexoobs_destinations")
+    .update(row)
+    .eq("tenant_id", tenantId)
+    .eq("id", id);
+}
+
+/** Whether a destination has the minimum config to broadcast: an ingest URL
+ *  and a stream key. Used to gate the enabled toggle. */
+export function isDestinationConfigured(d: {
+  ingestUrl: string;
+  streamKey: string;
+}): boolean {
+  return d.ingestUrl.trim().length > 0 && d.streamKey.trim().length > 0;
 }
 
 export async function toggleDestination(

@@ -17,8 +17,13 @@ import {
   MonitorIcon,
   PlusIcon,
 } from "./icons";
+import { ChannelEditModal, ChannelPatch } from "./ChannelEditModal";
 
 type Dest = DestinationConfig & { id: string };
+
+function isConfigured(d: Dest): boolean {
+  return d.ingestUrl.trim().length > 0 && d.streamKey.trim().length > 0;
+}
 
 interface ChannelsPanelProps {
   destinations: Dest[];
@@ -26,6 +31,7 @@ interface ChannelsPanelProps {
   onAddChannel: (platformId: PlatformId) => void;
   onUpdateTitles: () => void;
   onRemove: (id: string) => void;
+  onSaveDestination: (id: string, patch: ChannelPatch) => void;
   busy?: boolean;
 }
 
@@ -33,6 +39,7 @@ type Tab = "channels" | "chat";
 
 export function ChannelsPanel(props: ChannelsPanelProps) {
   const [tab, setTab] = useState<Tab>("channels");
+  const [editing, setEditing] = useState<Dest | null>(null);
   const activeCount = props.destinations.filter((d) => d.enabled).length;
 
   return (
@@ -61,10 +68,23 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
           onAddChannel={props.onAddChannel}
           onUpdateTitles={props.onUpdateTitles}
           onRemove={props.onRemove}
+          onEdit={setEditing}
           busy={props.busy}
         />
       ) : (
         <ChatTab />
+      )}
+
+      {editing && (
+        <ChannelEditModal
+          destination={editing}
+          busy={props.busy}
+          onClose={() => setEditing(null)}
+          onSave={(patch) => {
+            props.onSaveDestination(editing.id, patch);
+            setEditing(null);
+          }}
+        />
       )}
     </section>
   );
@@ -105,6 +125,7 @@ function ChannelsTab({
   onAddChannel,
   onUpdateTitles,
   onRemove,
+  onEdit,
   busy,
 }: {
   destinations: Dest[];
@@ -114,6 +135,7 @@ function ChannelsTab({
   onAddChannel: (platformId: PlatformId) => void;
   onUpdateTitles: () => void;
   onRemove: (id: string) => void;
+  onEdit: (d: Dest) => void;
   busy?: boolean;
 }) {
   const [picking, setPicking] = useState(false);
@@ -194,6 +216,7 @@ function ChannelsTab({
               destination={d}
               onToggle={() => onToggle(d.id)}
               onRemove={() => onRemove(d.id)}
+              onEdit={() => onEdit(d)}
               busy={busy}
             />
           ))
@@ -207,17 +230,20 @@ function ChannelRow({
   destination,
   onToggle,
   onRemove,
+  onEdit,
   busy,
 }: {
   destination: Dest;
   onToggle: () => void;
   onRemove: () => void;
+  onEdit: () => void;
   busy?: boolean;
 }) {
   const meta = PLATFORM_META[destination.platformId];
   const color = `var(--color-${meta.colorVar})`;
   const status = destination.status;
   const handle = destination.channelHandle || meta.displayName;
+  const configured = isConfigured(destination);
 
   return (
     <li className="mb-1.5">
@@ -243,12 +269,19 @@ function ChannelRow({
           <div className="text-[11px] text-text-tertiary truncate">
             {destination.streamTitle || meta.displayName}
           </div>
-          {status?.kind === "offline" && (
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-text-tertiary" />
-              <span className="text-[10px] text-text-tertiary">Offline</span>
-            </div>
-          )}
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span
+              className="w-1.5 h-1.5 rounded-full"
+              style={{
+                backgroundColor: configured
+                  ? "var(--color-good)"
+                  : "var(--color-warn)",
+              }}
+            />
+            <span className="text-[10px] text-text-tertiary">
+              {configured ? "Configurado" : "Falta stream key"}
+            </span>
+          </div>
         </div>
 
         <button
@@ -262,14 +295,25 @@ function ChannelRow({
         </button>
 
         <button
-          className="p-1 text-text-tertiary hover:text-text-primary"
-          aria-label="Output mode"
-          title="Output mode"
+          onClick={onEdit}
+          disabled={busy}
+          className="text-[11px] text-text-secondary hover:text-text-primary font-medium px-1 disabled:opacity-40"
         >
-          <MonitorIcon className="w-4 h-4" />
+          Edit
         </button>
 
-        <Toggle value={destination.enabled} onChange={onToggle} accent={color} busy={busy} />
+        <Toggle
+          value={destination.enabled}
+          onChange={onToggle}
+          accent={color}
+          busy={busy}
+          disabled={!configured}
+          title={
+            configured
+              ? undefined
+              : "Configura el stream key antes de activar"
+          }
+        />
       </div>
 
       {status && status.kind !== "ok" && status.kind !== "offline" && (
@@ -310,19 +354,24 @@ function Toggle({
   onChange,
   accent,
   busy,
+  disabled,
+  title,
 }: {
   value: boolean;
   onChange: () => void;
   accent: string;
   busy?: boolean;
+  disabled?: boolean;
+  title?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onChange}
-      disabled={busy}
+      disabled={busy || disabled}
       aria-pressed={value}
-      className="relative inline-flex h-5 w-9 items-center rounded-full transition shrink-0 disabled:opacity-50"
+      title={title}
+      className="relative inline-flex h-5 w-9 items-center rounded-full transition shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
       style={{ backgroundColor: value ? accent : "var(--color-surface-high)" }}
     >
       <span

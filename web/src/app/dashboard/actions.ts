@@ -9,6 +9,7 @@ import {
   removeDestination,
   toggleDestination,
   updateAllTitles,
+  updateDestination,
   updateSession,
 } from "@/lib/data";
 
@@ -54,6 +55,20 @@ export async function addDestinationAction(platformId: PlatformId): Promise<void
 export async function toggleDestinationAction(id: string): Promise<void> {
   const tenant = await requireTenant();
   await toggleDestination(tenant, id);
+  revalidatePath("/dashboard");
+}
+
+export async function updateDestinationAction(
+  id: string,
+  patch: {
+    channelHandle?: string;
+    streamTitle?: string;
+    ingestUrl?: string;
+    streamKey?: string;
+  },
+): Promise<void> {
+  const tenant = await requireTenant();
+  await updateDestination(tenant, id, patch);
   revalidatePath("/dashboard");
 }
 
