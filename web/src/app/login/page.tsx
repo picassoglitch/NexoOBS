@@ -1,46 +1,14 @@
-"use client";
-
-import { useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { readSupabaseEnv } from "@/lib/supabase/env";
+import { signInWithGoogle } from "./actions";
 
-export default function LoginPage() {
-  return (
-    <Suspense fallback={null}>
-      <LoginContent />
-    </Suspense>
-  );
+interface LoginPageProps {
+  searchParams: Promise<{ next?: string; error?: string }>;
 }
 
-function LoginContent() {
-  const params = useSearchParams();
-  const next = params.get("next") ?? "/dashboard";
-  const [loading, setLoading] = useState<"google" | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const { next, error } = await searchParams;
   const envConfigured = readSupabaseEnv() !== null;
-  const siteUrl =
-    typeof window !== "undefined" ? window.location.origin : "";
-
-  const signInWithGoogle = async () => {
-    setError(null);
-    setLoading("google");
-    try {
-      const supabase = getSupabaseBrowser();
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`,
-        },
-      });
-      if (error) throw error;
-    } catch (e) {
-      setError((e as Error).message);
-      setLoading(null);
-    }
-  };
 
   return (
     <div className="flex-1 flex items-center justify-center px-6 py-16">
@@ -54,9 +22,10 @@ function LoginContent() {
 
         {!envConfigured && (
           <div className="mb-5 p-3 rounded-lg bg-warn/10 border border-warn/40 text-xs text-text-secondary">
-            <strong className="text-warn">Auth no configurado.</strong> Define
-            las variables <code className="font-mono">NEXT_PUBLIC_SUPABASE_*</code>{" "}
-            en Railway. Mientras tanto puedes ir directo al{" "}
+            <strong className="text-warn">Auth no configurado.</strong> Define{" "}
+            <code className="font-mono">NEXOOBS_SUPABASE_URL</code> y{" "}
+            <code className="font-mono">NEXOOBS_SUPABASE_ANON_KEY</code> en
+            Railway. Mientras tanto puedes ir directo al{" "}
             <Link href="/dashboard" className="text-accent underline">
               dashboard (mock)
             </Link>
@@ -64,18 +33,21 @@ function LoginContent() {
           </div>
         )}
 
-        <button
-          onClick={signInWithGoogle}
-          disabled={!envConfigured || loading !== null}
-          className="w-full flex items-center justify-center gap-3 py-3 rounded-lg bg-surface border border-border hover:bg-surface-elevated transition text-sm font-semibold disabled:opacity-50"
-        >
-          <GoogleMark />
-          {loading === "google" ? "Abriendo Google…" : "Continuar con Google"}
-        </button>
+        <form action={signInWithGoogle}>
+          <input type="hidden" name="next" value={next ?? "/dashboard"} />
+          <button
+            type="submit"
+            disabled={!envConfigured}
+            className="w-full flex items-center justify-center gap-3 py-3 rounded-lg bg-surface border border-border hover:bg-surface-elevated transition text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <GoogleMark />
+            Continuar con Google
+          </button>
+        </form>
 
-        {error && (
-          <p className="mt-4 text-xs text-bad bg-bad/10 border border-bad/30 rounded-md p-2">
-            {error}
+        {error && error !== "not_configured" && (
+          <p className="mt-4 text-xs text-bad bg-bad/10 border border-bad/30 rounded-md p-2 break-words">
+            {decodeURIComponent(error)}
           </p>
         )}
 
