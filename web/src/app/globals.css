@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0b0d10;
+  --surface: #14171c;
+  --surface-elevated: #1b1f26;
+  --surface-high: #232830;
+  --border: #2a2f38;
+  --border-strong: #353b45;
+
+  --text-primary: #f5f6f8;
+  --text-secondary: #b9bfc9;
+  --text-tertiary: #7a818d;
+
+  --accent: #7c5cff;
+  --accent-soft: #2a2358;
+
+  --good: #22c55e;
+  --warn: #f59e0b;
+  --bad: #ef4444;
+
+  --kick: #53fc18;
+  --twitch: #9146ff;
+  --youtube: #ff0033;
+  --tiktok: #ff0050;
+  --restream: #22d3ee;
+  --instagram: #e4405f;
+  --facebook: #1877f2;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-high: var(--surface-high);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+
+  --color-good: var(--good);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+
+  --color-kick: var(--kick);
+  --color-twitch: var(--twitch);
+  --color-youtube: var(--youtube);
+  --color-tiktok: var(--tiktok);
+  --color-restream: var(--restream);
+  --color-instagram: var(--instagram);
+  --color-facebook: var(--facebook);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}

@@ -1,0 +1,13 @@
+import type { NextConfig } from "next";
+import path from "node:path";
+
+const nextConfig: NextConfig = {
+  // Pin Turbopack's workspace root to web/ — the monorepo root has its own
+  // package-lock.json (React Native app) which would otherwise confuse the
+  // detection and surface a warning on every build.
+  turbopack: {
+    root: path.resolve(__dirname),
+  },
+};
+
+export default nextConfig;
