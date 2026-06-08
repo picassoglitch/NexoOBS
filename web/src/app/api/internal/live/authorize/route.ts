@@ -14,7 +14,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { checkRelayBearer } from "@/lib/relay-auth";
-import { getTenantByStreamKey } from "@/lib/data";
+import { getTenantByStreamKey, mintStreamId } from "@/lib/data";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!checkRelayBearer(request.headers.get("authorization"))) {
@@ -41,11 +41,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "unknown_stream_key" }, { status: 403 });
   }
 
-  // stream_id = tenant_id (one live session per tenant). The destinations
-  // hook queries by this stream_id.
+  // Fresh, unique stream id per session — encodes the tenant
+  // (<tenant>__<random>) so the recording prefix is tenant-namespaced and
+  // every session is its own recording/clip set. The relay echoes this back
+  // on destinations/started/ended; we recover the tenant from it.
+  const streamId = mintStreamId(tenantId);
   return NextResponse.json({
-    stream_id: tenantId,
+    stream_id: streamId,
     tenant_id: tenantId,
-    recording_path: `live/${tenantId}`,
+    recording_path: `live/${streamId}`,
   });
 }

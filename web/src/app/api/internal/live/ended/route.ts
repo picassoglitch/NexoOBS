@@ -1,15 +1,15 @@
 /**
  * POST /api/internal/live/ended   { stream_id, duration_s? }
  *
- * Relay tells us the publisher disconnected. We flip the tenant's session
- * back to offline and — when "Get Clips" is on — forward the end to
- * NexoClip, which runs its auto-clip pipeline on the recording.
- * stream_id == tenant_id (see authorize route). Bearer-authed.
+ * Relay tells us the publisher disconnected. We recover the tenant from the
+ * stream_id (<tenant>__<random>), flip the session back to offline, and —
+ * when the NexoClip connection is on — forward the end to NexoClip, which
+ * runs its auto-clip pipeline on the recording. Bearer-authed.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { checkRelayBearer } from "@/lib/relay-auth";
-import { getClipsEnabled, updateSession } from "@/lib/data";
+import { getClipsEnabled, tenantFromStreamId, updateSession } from "@/lib/data";
 import { nexoclipEnded } from "@/lib/nexoclip";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -25,13 +25,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const streamId = body.stream_id;
   if (!streamId) return new NextResponse(null, { status: 204 });
 
-  // stream_id == tenant_id.
-  await updateSession(streamId, { isLive: false });
+  const tenantId = tenantFromStreamId(streamId);
+  if (!tenantId) return new NextResponse(null, { status: 204 });
 
-  if (await getClipsEnabled(streamId)) {
+  await updateSession(tenantId, { isLive: false });
+
+  if (await getClipsEnabled(tenantId)) {
     await nexoclipEnded({
       streamId,
-      tenantId: streamId, // stream_id == tenant_id (Nexo AI user id)
+      tenantId,
       durationS: typeof body.duration_s === "number" ? body.duration_s : undefined,
     });
   }

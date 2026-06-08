@@ -308,6 +308,33 @@ export async function getTenantByStreamKey(
   return (data?.tenant_id as string | undefined) ?? null;
 }
 
+const STREAM_ID_SEP = "__";
+
+/** Mint a unique-per-session stream id that ALSO encodes the tenant:
+ *  `<tenant_id>__<random>`. This gives both properties at once:
+ *   - tenant binding: the relay's storage prefix (live/<stream_id>/) is
+ *     namespaced per tenant, so no user can reach another's recording.
+ *   - per-stream uniqueness: the random suffix means every session is its
+ *     own recording + clip set (no more reopening the previous stream).
+ *  Tenant ids are UUIDs (no '__'), so the tenant is recoverable by splitting
+ *  on the last separator. */
+export function mintStreamId(tenantId: string): string {
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  const rand = Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return `${tenantId}${STREAM_ID_SEP}${rand}`;
+}
+
+/** Recover the tenant from a stream id minted by mintStreamId(). Returns
+ *  null if the id isn't in the expected shape. */
+export function tenantFromStreamId(streamId: string): string | null {
+  const i = streamId.lastIndexOf(STREAM_ID_SEP);
+  if (i <= 0) return null;
+  return streamId.slice(0, i);
+}
+
 /** Fan-out targets for the relay: enabled + fully-configured destinations,
  *  each as a complete RTMP push URL (ingest + key) the relay feeds to
  *  `ffmpeg -c copy -f flv`. */

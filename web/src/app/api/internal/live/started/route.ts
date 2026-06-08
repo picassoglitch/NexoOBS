@@ -2,14 +2,17 @@
  * POST /api/internal/live/started   { stream_id, tenant_id, recording_path }
  *
  * Relay tells us the push went live. We flip the tenant's session to live so
- * the dashboard badge reflects reality, and — when "Get Clips" is on —
- * forward the start to NexoClip so it records the stream for clipping.
- * Bearer-authed.
+ * the dashboard badge reflects reality, and — when the NexoClip connection
+ * is on — forward the start to NexoClip so it records the stream for
+ * clipping. Bearer-authed.
+ *
+ * stream_id is unique per session (<tenant>__<random>); tenant_id is echoed
+ * from authorize but we also recover it from the stream_id as a fallback.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { checkRelayBearer } from "@/lib/relay-auth";
-import { getClipsEnabled, updateSession } from "@/lib/data";
+import { getClipsEnabled, tenantFromStreamId, updateSession } from "@/lib/data";
 import { nexoclipStarted } from "@/lib/nexoclip";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -22,21 +25,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
-  const tenantId = body.tenant_id ?? body.stream_id;
-  const streamId = body.stream_id ?? tenantId;
+  const streamId = body.stream_id ?? "";
+  const tenantId =
+    body.tenant_id ?? (streamId ? tenantFromStreamId(streamId) : null);
   if (!tenantId || !streamId) {
     return new NextResponse(null, { status: 204 });
   }
 
   await updateSession(tenantId, { isLive: true });
 
-  // Hand off to NexoClip's tested pipeline when the tenant opted in.
+  // Hand off to NexoClip's pipeline when the connection is on.
   if (await getClipsEnabled(tenantId)) {
     await nexoclipStarted({
       streamId,
       tenantId,
-      recordingPath:
-        body.recording_path ?? `/data/live/${streamId}/source`,
+      recordingPath: body.recording_path ?? `live/${streamId}`,
     });
   }
 
