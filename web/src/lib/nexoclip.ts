@@ -29,7 +29,9 @@ export function isNexoclipConfigured(): boolean {
   return Boolean(base() && secret());
 }
 
-/** Register the live stream with NexoClip so it creates its streams row. */
+/** Register the live stream with NexoClip so it creates its streams row.
+ *  Hits the NexoOBS-handoff endpoint, which maps external_user_id (our
+ *  tenant_id = the Nexo AI user id) to NexoClip's own tenant. */
 export async function nexoclipStarted(args: {
   streamId: string;
   tenantId: string;
@@ -39,15 +41,15 @@ export async function nexoclipStarted(args: {
   const s = secret();
   if (!b || !s) return;
   try {
-    await fetch(`${b}/api/internal/live/started`, {
+    await fetch(`${b}/api/internal/nexoobs/started`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${s}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        external_user_id: args.tenantId,
         stream_id: args.streamId,
-        tenant_id: args.tenantId,
         recording_path: args.recordingPath,
       }),
       cache: "no-store",
@@ -60,19 +62,21 @@ export async function nexoclipStarted(args: {
 /** Tell NexoClip the stream ended → triggers its auto-clip pipeline. */
 export async function nexoclipEnded(args: {
   streamId: string;
+  tenantId: string;
   durationS?: number;
 }): Promise<void> {
   const b = base();
   const s = secret();
   if (!b || !s) return;
   try {
-    await fetch(`${b}/api/internal/live/ended`, {
+    await fetch(`${b}/api/internal/nexoobs/ended`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${s}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        external_user_id: args.tenantId,
         stream_id: args.streamId,
         ...(args.durationS != null ? { duration_s: args.durationS } : {}),
       }),

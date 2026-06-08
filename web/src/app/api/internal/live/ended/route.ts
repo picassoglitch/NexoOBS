@@ -31,6 +31,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (await getClipsEnabled(streamId)) {
     await nexoclipEnded({
       streamId,
+      tenantId: streamId, // stream_id == tenant_id (Nexo AI user id)
       durationS: typeof body.duration_s === "number" ? body.duration_s : undefined,
     });
   }
