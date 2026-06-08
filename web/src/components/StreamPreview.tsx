@@ -3,26 +3,33 @@
 import { useEffect, useRef, useState } from "react";
 import Hls from "hls.js";
 
-type State = "waiting" | "live" | "unconfigured";
+type State = "connecting" | "live" | "reconnecting" | "error" | "unconfigured";
 
 interface Props {
   /** HLS manifest URL, or null when the relay HLS base isn't configured. */
   hlsUrl: string | null;
 }
 
+// After this many consecutive fatal errors *once we've had signal*, stop
+// auto-recovering and surface the alert with a manual retry.
+const MAX_FATAL_BEFORE_ALERT = 6;
+
 /**
- * Live preview player. Pulls HLS from the relay (MediaMTX). The manifest
- * only exists while an encoder is pushing, so we retry until it appears,
- * then play. Falls back to a "no signal" placeholder otherwise.
+ * Live preview player. Pulls HLS from the relay via the authenticated
+ * same-origin proxy. The manifest only exists while an encoder is pushing,
+ * so before first signal we sit in "connecting". Transient errors after
+ * we've had signal use hls.js's built-in recovery (network → reload, media
+ * → recover) and show "reconnecting" — keeping the last frame — instead of
+ * flickering back to "waiting". Only sustained failure raises the alert.
  *
- * HLS (not WebRTC) because Railway's HTTP proxy is TCP-only — HLS rides
- * entirely over HTTP and works through the proxy; WebRTC's UDP/ICE doesn't.
+ * HLS (not WebRTC) because Railway's HTTP proxy is TCP-only.
  */
 export function StreamPreview({ hlsUrl }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [state, setState] = useState<State>(
-    hlsUrl ? "waiting" : "unconfigured",
+    hlsUrl ? "connecting" : "unconfigured",
   );
+  const [attempt, setAttempt] = useState(0); // bump to force a full reconnect
 
   useEffect(() => {
     if (!hlsUrl) {
@@ -34,88 +41,174 @@ export function StreamPreview({ hlsUrl }: Props) {
 
     let cancelled = false;
     let hls: Hls | null = null;
-    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let fatalCount = 0;
+    let hadSignal = false;
+    let reloadTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const scheduleRetry = () => {
+    const markLive = () => {
       if (cancelled) return;
-      setState("waiting");
-      retryTimer = setTimeout(start, 4000);
+      hadSignal = true;
+      fatalCount = 0;
+      setState("live");
     };
 
-    const start = () => {
-      if (cancelled) return;
-
-      // Safari / iOS: native HLS.
-      if (video.canPlayType("application/vnd.apple.mpegurl")) {
-        video.src = hlsUrl;
-        video
-          .play()
-          .then(() => !cancelled && setState("live"))
-          .catch(scheduleRetry);
-        const onErr = () => scheduleRetry();
-        video.addEventListener("error", onErr, { once: true });
-        return;
-      }
-
-      if (!Hls.isSupported()) {
-        setState("waiting");
-        return;
-      }
-
-      hls = new Hls({ lowLatencyMode: true, liveSyncDurationCount: 3 });
-      hls.loadSource(hlsUrl);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+    // Native HLS (Safari / iOS).
+    if (video.canPlayType("application/vnd.apple.mpegurl") && !Hls.isSupported()) {
+      video.src = hlsUrl;
+      const onPlaying = () => markLive();
+      const onError = () => {
         if (cancelled) return;
-        video.play().catch(() => {});
-        setState("live");
-      });
-      hls.on(Hls.Events.ERROR, (_evt, data) => {
-        if (!data.fatal) return;
-        // Manifest 404 (no publisher yet) or network blip → tear down + retry.
-        hls?.destroy();
-        hls = null;
-        scheduleRetry();
-      });
-    };
+        setState(hadSignal ? "reconnecting" : "connecting");
+        reloadTimer = setTimeout(() => {
+          if (!cancelled) video.load();
+        }, 3000);
+      };
+      video.addEventListener("playing", onPlaying);
+      video.addEventListener("error", onError);
+      video.play().catch(() => {});
+      return () => {
+        cancelled = true;
+        if (reloadTimer) clearTimeout(reloadTimer);
+        video.removeEventListener("playing", onPlaying);
+        video.removeEventListener("error", onError);
+      };
+    }
 
-    start();
+    if (!Hls.isSupported()) {
+      setState("connecting");
+      return;
+    }
+
+    hls = new Hls({
+      // Stability over latency: LL-HLS through the proxy flaps. A few extra
+      // seconds of delay is fine for a confidence monitor.
+      lowLatencyMode: false,
+      manifestLoadingMaxRetry: 6,
+      manifestLoadingRetryDelay: 1000,
+      levelLoadingMaxRetry: 6,
+      fragLoadingMaxRetry: 8,
+    });
+
+    hls.loadSource(hlsUrl);
+    hls.attachMedia(video);
+
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      if (cancelled) return;
+      video.play().catch(() => {});
+    });
+    hls.on(Hls.Events.FRAG_BUFFERED, markLive);
+    hls.on(Hls.Events.ERROR, (_evt, data) => {
+      if (cancelled || !data.fatal) return;
+      fatalCount += 1;
+
+      // Before any signal, fatal errors are just "no publisher yet" — stay
+      // calm in connecting and let hls.js keep retrying the manifest.
+      if (!hadSignal) {
+        setState("connecting");
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls?.startLoad();
+        return;
+      }
+
+      // Had signal → transient blip. Try to recover in place.
+      if (fatalCount < MAX_FATAL_BEFORE_ALERT) {
+        setState("reconnecting");
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+          hls?.startLoad();
+        } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+          hls?.recoverMediaError();
+        } else {
+          // Unrecoverable type → full reconnect on a delay.
+          reloadTimer = setTimeout(() => {
+            if (!cancelled) setAttempt((a) => a + 1);
+          }, 3000);
+        }
+        return;
+      }
+
+      // Sustained failure → give up auto-recovery, raise the alert.
+      setState("error");
+      hls?.destroy();
+    });
 
     return () => {
       cancelled = true;
-      if (retryTimer) clearTimeout(retryTimer);
+      if (reloadTimer) clearTimeout(reloadTimer);
       hls?.destroy();
     };
-  }, [hlsUrl]);
+  }, [hlsUrl, attempt]);
+
+  const showVideo = state === "live" || state === "reconnecting";
 
   return (
     <div className="rounded-2xl bg-surface border border-border overflow-hidden">
       <div className="relative aspect-video bg-black">
         <video
           ref={videoRef}
-          className={`w-full h-full object-contain ${state === "live" ? "" : "opacity-0"}`}
+          className={`w-full h-full object-contain ${showVideo ? "" : "opacity-0"}`}
           muted
           playsInline
           controls={state === "live"}
         />
-        {state !== "live" && (
+
+        {/* LIVE badge */}
+        {state === "live" && (
+          <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-bad/80 text-white text-[10px] font-bold tracking-wider">
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            LIVE
+          </span>
+        )}
+
+        {/* Reconnecting — keep last frame visible, overlay a small banner */}
+        {state === "reconnecting" && (
+          <div className="absolute top-3 left-3 inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-black/70 text-warn text-[11px] font-semibold">
+            <span className="w-3 h-3 rounded-full border-2 border-warn border-t-transparent animate-spin" />
+            Reconectando…
+          </div>
+        )}
+
+        {/* Connecting / unconfigured / error — full overlay */}
+        {(state === "connecting" ||
+          state === "unconfigured" ||
+          state === "error") && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
-            <div className="w-12 h-12 rounded-full border border-border flex items-center justify-center mb-3">
-              <span className="w-2.5 h-2.5 rounded-full bg-text-tertiary" />
-            </div>
-            {state === "unconfigured" ? (
+            {state === "error" ? (
               <>
+                <div className="w-12 h-12 rounded-full bg-bad/15 border border-bad/40 flex items-center justify-center mb-3">
+                  <span className="text-bad text-xl leading-none">!</span>
+                </div>
+                <p className="text-sm font-semibold text-bad">Señal perdida</p>
+                <p className="text-[11px] text-text-tertiary mt-1 max-w-xs">
+                  Se interrumpió la conexión con el relay (red o el encoder dejó
+                  de transmitir).
+                </p>
+                <button
+                  onClick={() => {
+                    setState("connecting");
+                    setAttempt((a) => a + 1);
+                  }}
+                  className="mt-3 px-3 py-1.5 rounded-md bg-accent text-white text-xs font-semibold hover:opacity-90 transition"
+                >
+                  Reintentar
+                </button>
+              </>
+            ) : state === "unconfigured" ? (
+              <>
+                <div className="w-12 h-12 rounded-full border border-border flex items-center justify-center mb-3">
+                  <span className="w-2.5 h-2.5 rounded-full bg-text-tertiary" />
+                </div>
                 <p className="text-sm font-semibold text-text-secondary">
                   Preview no disponible
                 </p>
                 <p className="text-[11px] text-text-tertiary mt-1 max-w-xs">
                   El relay aún no expone HLS. Configura{" "}
-                  <code className="font-mono">NEXOOBS_RELAY_HLS_URL</code> y
-                  habilita HLS en MediaMTX.
+                  <code className="font-mono">NEXOOBS_RELAY_INTERNAL_HLS</code>.
                 </p>
               </>
             ) : (
               <>
+                <div className="w-12 h-12 rounded-full border border-border flex items-center justify-center mb-3">
+                  <span className="w-3 h-3 rounded-full border-2 border-text-tertiary border-t-transparent animate-spin" />
+                </div>
                 <p className="text-sm font-semibold text-text-secondary">
                   Esperando señal…
                 </p>
@@ -126,12 +219,6 @@ export function StreamPreview({ hlsUrl }: Props) {
               </>
             )}
           </div>
-        )}
-        {state === "live" && (
-          <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-bad/80 text-white text-[10px] font-bold tracking-wider">
-            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-            LIVE
-          </span>
         )}
       </div>
     </div>
