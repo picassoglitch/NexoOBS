@@ -41,9 +41,15 @@ export default async function DashboardPage() {
   // Preview is available when the relay's private HLS address is set; the
   // player then pulls from the authenticated same-origin proxy.
   const previewEnabled = Boolean(process.env.NEXOOBS_RELAY_INTERNAL_HLS);
-  // Where "Get Clips" sends the user.
-  const nexoclipUrl =
-    process.env.NEXOCLIP_PUBLIC_URL ?? "https://nexoclip.nexo-ai.world";
+  // "Get Clips" routes through Nexo-AI's cross-app SSO launcher so the
+  // session carries into NexoClip (no landing/login bounce).
+  const nexoAiBase = (
+    process.env.NEXO_AI_BASE_URL ?? "https://nexo-ai.world"
+  ).replace(/\/+$/, "");
+  const nexoclipLaunchUrl = `${nexoAiBase}/auth/launch/nexoclip`;
+  // The streaming↔clips cross-engine feature is full-access only. SSO tier
+  // arrives lowercased ('all_access').
+  const isFullAccess = (session.tier ?? "").toLowerCase() === "all_access";
 
   return (
     <DashboardClient
@@ -54,7 +60,8 @@ export default async function DashboardPage() {
       initialStreamKey={tenantSession.streamKey}
       relayRtmp={relayRtmp}
       previewEnabled={previewEnabled}
-      nexoclipUrl={nexoclipUrl}
+      nexoclipLaunchUrl={nexoclipLaunchUrl}
+      isFullAccess={isFullAccess}
       destinations={destinations}
     />
   );

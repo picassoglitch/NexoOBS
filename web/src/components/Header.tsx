@@ -8,6 +8,8 @@ interface HeaderProps {
   isLive: boolean;
   recordEnabled: boolean;
   clipsEnabled?: boolean;
+  /** Whether the Get Clips ↔ NexoClip feature is available (full access). */
+  clipsAvailable?: boolean;
   onTitleChange: (next: string) => void;
   onRecordToggle: () => void;
   onGetClips: () => void;
@@ -18,6 +20,7 @@ export function Header({
   isLive,
   recordEnabled,
   clipsEnabled,
+  clipsAvailable = true,
   onTitleChange,
   onRecordToggle,
   onGetClips,
@@ -94,24 +97,26 @@ export function Header({
         <span className="text-xs font-medium text-text-secondary">Record</span>
       </div>
 
-      <button
-        type="button"
-        onClick={onGetClips}
-        title={
-          clipsEnabled
-            ? "Clips activados — abre NexoClip"
-            : "Activar clips y abrir NexoClip"
-        }
-        className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-md border transition ${
-          clipsEnabled
-            ? "border-accent/50 bg-accent-soft/40 text-accent"
-            : "border-border bg-surface hover:bg-surface-elevated"
-        }`}
-      >
-        <ClipsIcon className="w-4 h-4 text-accent" />
-        <span>Get Clips</span>
-        {clipsEnabled && <span className="w-1.5 h-1.5 rounded-full bg-accent" />}
-      </button>
+      {clipsAvailable && (
+        <button
+          type="button"
+          onClick={onGetClips}
+          title={
+            clipsEnabled
+              ? "Clips activados — abre NexoClip"
+              : "Activar clips y abrir NexoClip"
+          }
+          className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-md border transition ${
+            clipsEnabled
+              ? "border-accent/50 bg-accent-soft/40 text-accent"
+              : "border-border bg-surface hover:bg-surface-elevated"
+          }`}
+        >
+          <ClipsIcon className="w-4 h-4 text-accent" />
+          <span>Get Clips</span>
+          {clipsEnabled && <span className="w-1.5 h-1.5 rounded-full bg-accent" />}
+        </button>
+      )}
 
       {isLive && (
         <span className="ml-1 inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-bad/15 text-bad text-[10px] font-bold tracking-wider">

@@ -33,7 +33,8 @@ interface Props {
   initialStreamKey: string;
   relayRtmp: string;
   previewEnabled: boolean;
-  nexoclipUrl: string;
+  nexoclipLaunchUrl: string;
+  isFullAccess: boolean;
   destinations: Dest[];
 }
 
@@ -50,7 +51,8 @@ export function DashboardClient({
   initialStreamKey,
   relayRtmp,
   previewEnabled,
-  nexoclipUrl,
+  nexoclipLaunchUrl,
+  isFullAccess,
   destinations,
 }: Props) {
   const router = useRouter();
@@ -98,13 +100,15 @@ export function DashboardClient({
           startTransition(() => toggleRecordAction(next));
         }}
         clipsEnabled={clipsEnabled}
+        clipsAvailable={isFullAccess}
         onGetClips={() => {
-          // Ensure clips are on for future streams, then open NexoClip.
+          // Ensure clips are on for future streams, then open NexoClip via
+          // the Nexo-AI SSO launcher (keeps the session — no login bounce).
           if (!clipsEnabled) {
             setClipsEnabled(true);
             startTransition(() => setClipsEnabledAction(true));
           }
-          window.open(nexoclipUrl, "_blank", "noopener,noreferrer");
+          window.open(nexoclipLaunchUrl, "_blank", "noopener,noreferrer");
         }}
       />
 
