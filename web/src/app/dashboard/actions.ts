@@ -39,6 +39,12 @@ export async function toggleLiveAction(value: boolean): Promise<void> {
   revalidatePath("/dashboard");
 }
 
+export async function setClipsEnabledAction(value: boolean): Promise<void> {
+  const tenant = await requireTenant();
+  await updateSession(tenant, { clipsEnabled: value });
+  revalidatePath("/dashboard");
+}
+
 export async function regenerateKeyAction(): Promise<string> {
   const tenant = await requireTenant();
   const key = await regenerateStreamKey(tenant);

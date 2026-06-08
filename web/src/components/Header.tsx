@@ -7,6 +7,7 @@ interface HeaderProps {
   title: string;
   isLive: boolean;
   recordEnabled: boolean;
+  clipsEnabled?: boolean;
   onTitleChange: (next: string) => void;
   onRecordToggle: () => void;
   onGetClips: () => void;
@@ -16,6 +17,7 @@ export function Header({
   title,
   isLive,
   recordEnabled,
+  clipsEnabled,
   onTitleChange,
   onRecordToggle,
   onGetClips,
@@ -95,10 +97,20 @@ export function Header({
       <button
         type="button"
         onClick={onGetClips}
-        className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-md border border-border bg-surface hover:bg-surface-elevated transition"
+        title={
+          clipsEnabled
+            ? "Clips activados — abre NexoClip"
+            : "Activar clips y abrir NexoClip"
+        }
+        className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-md border transition ${
+          clipsEnabled
+            ? "border-accent/50 bg-accent-soft/40 text-accent"
+            : "border-border bg-surface hover:bg-surface-elevated"
+        }`}
       >
         <ClipsIcon className="w-4 h-4 text-accent" />
         <span>Get Clips</span>
+        {clipsEnabled && <span className="w-1.5 h-1.5 rounded-full bg-accent" />}
       </button>
 
       {isLive && (

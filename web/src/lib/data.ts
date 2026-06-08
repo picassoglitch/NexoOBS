@@ -21,6 +21,7 @@ export interface TenantSession {
   title: string;
   isLive: boolean;
   recordEnabled: boolean;
+  clipsEnabled: boolean;
   streamKey: string;
 }
 
@@ -45,7 +46,7 @@ export async function getOrCreateSession(
   const db = getSupabaseAdmin();
   const { data } = await db
     .from("nexoobs_sessions")
-    .select("title, is_live, record_enabled, stream_key")
+    .select("title, is_live, record_enabled, clips_enabled, stream_key")
     .eq("tenant_id", tenantId)
     .maybeSingle();
 
@@ -54,6 +55,7 @@ export async function getOrCreateSession(
       title: data.title as string,
       isLive: data.is_live as boolean,
       recordEnabled: data.record_enabled as boolean,
+      clipsEnabled: (data.clips_enabled as boolean | null) ?? true,
       streamKey: data.stream_key as string,
     };
   }
@@ -62,6 +64,7 @@ export async function getOrCreateSession(
     title: DEFAULT_TITLE,
     isLive: false,
     recordEnabled: true,
+    clipsEnabled: true,
     streamKey: freshStreamKey(),
   };
   await db.from("nexoobs_sessions").insert({
@@ -69,9 +72,22 @@ export async function getOrCreateSession(
     title: fresh.title,
     is_live: fresh.isLive,
     record_enabled: fresh.recordEnabled,
+    clips_enabled: fresh.clipsEnabled,
     stream_key: fresh.streamKey,
   });
   return fresh;
+}
+
+/** Read-only: is "Get Clips" on for this tenant? Used by the started/ended
+ *  webhooks to decide whether to forward the lifecycle to NexoClip. */
+export async function getClipsEnabled(tenantId: string): Promise<boolean> {
+  const db = getSupabaseAdmin();
+  const { data } = await db
+    .from("nexoobs_sessions")
+    .select("clips_enabled")
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  return (data?.clips_enabled as boolean | null) ?? false;
 }
 
 /** Read-only stream-key lookup (no create). Used by the preview proxy on
@@ -95,6 +111,7 @@ export async function updateSession(
   if (patch.title !== undefined) row.title = patch.title;
   if (patch.isLive !== undefined) row.is_live = patch.isLive;
   if (patch.recordEnabled !== undefined) row.record_enabled = patch.recordEnabled;
+  if (patch.clipsEnabled !== undefined) row.clips_enabled = patch.clipsEnabled;
   if (patch.streamKey !== undefined) row.stream_key = patch.streamKey;
   await db.from("nexoobs_sessions").update(row).eq("tenant_id", tenantId);
 }

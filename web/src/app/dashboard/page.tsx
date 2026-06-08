@@ -41,15 +41,20 @@ export default async function DashboardPage() {
   // Preview is available when the relay's private HLS address is set; the
   // player then pulls from the authenticated same-origin proxy.
   const previewEnabled = Boolean(process.env.NEXOOBS_RELAY_INTERNAL_HLS);
+  // Where "Get Clips" sends the user.
+  const nexoclipUrl =
+    process.env.NEXOCLIP_PUBLIC_URL ?? "https://nexoclip.nexo-ai.world";
 
   return (
     <DashboardClient
       initialTitle={tenantSession.title}
       initialIsLive={tenantSession.isLive}
       initialRecord={tenantSession.recordEnabled}
+      initialClips={tenantSession.clipsEnabled}
       initialStreamKey={tenantSession.streamKey}
       relayRtmp={relayRtmp}
       previewEnabled={previewEnabled}
+      nexoclipUrl={nexoclipUrl}
       destinations={destinations}
     />
   );

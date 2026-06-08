@@ -14,6 +14,7 @@ import {
   addDestinationAction,
   regenerateKeyAction,
   removeDestinationAction,
+  setClipsEnabledAction,
   setTitleAction,
   toggleDestinationAction,
   toggleLiveAction,
@@ -28,9 +29,11 @@ interface Props {
   initialTitle: string;
   initialIsLive: boolean;
   initialRecord: boolean;
+  initialClips: boolean;
   initialStreamKey: string;
   relayRtmp: string;
   previewEnabled: boolean;
+  nexoclipUrl: string;
   destinations: Dest[];
 }
 
@@ -43,15 +46,18 @@ export function DashboardClient({
   initialTitle,
   initialIsLive,
   initialRecord,
+  initialClips,
   initialStreamKey,
   relayRtmp,
   previewEnabled,
+  nexoclipUrl,
   destinations,
 }: Props) {
   const router = useRouter();
   const [title, setTitle] = useState(initialTitle);
   const [isLive, setIsLive] = useState(initialIsLive);
   const [recordEnabled, setRecordEnabled] = useState(initialRecord);
+  const [clipsEnabled, setClipsEnabled] = useState(initialClips);
   const [streamKey, setStreamKey] = useState(initialStreamKey);
   const [pending, startTransition] = useTransition();
 
@@ -91,8 +97,14 @@ export function DashboardClient({
           setRecordEnabled(next);
           startTransition(() => toggleRecordAction(next));
         }}
+        clipsEnabled={clipsEnabled}
         onGetClips={() => {
-          alert("Get Clips → enviará la sesión a NexoClip");
+          // Ensure clips are on for future streams, then open NexoClip.
+          if (!clipsEnabled) {
+            setClipsEnabled(true);
+            startTransition(() => setClipsEnabledAction(true));
+          }
+          window.open(nexoclipUrl, "_blank", "noopener,noreferrer");
         }}
       />
 
