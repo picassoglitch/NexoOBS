@@ -1,14 +1,23 @@
 import Link from "next/link";
-import { readSupabaseEnv } from "@/lib/supabase/env";
-import { signInWithGoogle } from "./actions";
+import { missingNexoEnvVars, readNexoEnv } from "@/lib/env";
 
 interface LoginPageProps {
   searchParams: Promise<{ next?: string; error?: string }>;
 }
 
+/**
+ * Login is just a redirect-to-Nexo-AI bounce. We don't host credentials
+ * here — Nexo-AI mints an SSO token and the browser lands back on
+ * /auth/sso?token=... which sets our session cookie.
+ *
+ * When env vars are missing this page surfaces the exact var names so
+ * operators see what to set in Railway without having to read logs.
+ */
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const { next, error } = await searchParams;
-  const envConfigured = readSupabaseEnv() !== null;
+  const env = readNexoEnv();
+  const missing = missingNexoEnvVars();
+  const configured = env !== null;
 
   return (
     <div className="flex-1 flex items-center justify-center px-6 py-16">
@@ -16,68 +25,65 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold mb-2">Entrar a NexoOBS</h1>
           <p className="text-text-tertiary text-sm">
-            Usa tu cuenta de Nexo-AI World.
+            Autenticate desde Nexo-AI World.
           </p>
         </div>
 
-        {!envConfigured && (
+        {!configured && (
           <div className="mb-5 p-3 rounded-lg bg-warn/10 border border-warn/40 text-xs text-text-secondary">
-            <strong className="text-warn">Auth no configurado.</strong> Define{" "}
-            <code className="font-mono">NEXOOBS_SUPABASE_URL</code> y{" "}
-            <code className="font-mono">NEXOOBS_SUPABASE_ANON_KEY</code> en
-            Railway. Mientras tanto puedes ir directo al{" "}
-            <Link href="/dashboard" className="text-accent underline">
-              dashboard (mock)
-            </Link>
-            .
+            <strong className="text-warn block mb-1">
+              Servicio no configurado.
+            </strong>
+            Faltan variables en Railway:
+            <ul className="mt-1 ml-4 list-disc font-mono text-[11px]">
+              {missing.map((v) => (
+                <li key={v}>{v}</li>
+              ))}
+            </ul>
+            <p className="mt-2">
+              Mientras tanto puedes ir directo al{" "}
+              <Link href="/dashboard" className="text-accent underline">
+                dashboard (mock)
+              </Link>
+              .
+            </p>
           </div>
         )}
 
-        <form action={signInWithGoogle}>
-          <input type="hidden" name="next" value={next ?? "/dashboard"} />
-          <button
-            type="submit"
-            disabled={!envConfigured}
-            className="w-full flex items-center justify-center gap-3 py-3 rounded-lg bg-surface border border-border hover:bg-surface-elevated transition text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+        {configured && (
+          <a
+            href={buildNexoAiLoginUrl(env, next)}
+            className="w-full flex items-center justify-center gap-3 py-3 rounded-lg bg-accent text-white hover:opacity-90 transition text-sm font-semibold"
           >
-            <GoogleMark />
-            Continuar con Google
-          </button>
-        </form>
+            Continuar con Nexo-AI World →
+          </a>
+        )}
 
-        {error && error !== "not_configured" && (
-          <p className="mt-4 text-xs text-bad bg-bad/10 border border-bad/30 rounded-md p-2 break-words">
-            {decodeURIComponent(error)}
-          </p>
+        {error && (
+          <div className="mt-4 text-xs text-bad bg-bad/10 border border-bad/30 rounded-md p-2 break-words">
+            <strong>SSO error:</strong>{" "}
+            <span className="font-mono">{decodeURIComponent(error)}</span>
+          </div>
         )}
 
         <p className="mt-8 text-center text-[11px] text-text-tertiary">
-          Al continuar aceptas los términos de Nexo-AI World.
+          NexoOBS es un agente de Nexo-AI World — tu sesión vive ahí.
         </p>
       </div>
     </div>
   );
 }
 
-function GoogleMark() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
-      <path
-        fill="#4285F4"
-        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09Z"
-      />
-      <path
-        fill="#34A853"
-        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.25 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23Z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M5.84 14.1A6.6 6.6 0 0 1 5.5 12c0-.73.13-1.44.34-2.1V7.07H2.18A11 11 0 0 0 1 12c0 1.78.43 3.46 1.18 4.94l3.66-2.84Z"
-      />
-      <path
-        fill="#EA4335"
-        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.83C6.71 7.31 9.14 5.38 12 5.38Z"
-      />
-    </svg>
-  );
+function buildNexoAiLoginUrl(
+  env: NonNullable<ReturnType<typeof readNexoEnv>>,
+  next: string | undefined,
+): string {
+  const returnTo = new URL(next ?? "/dashboard", env.publicUrl).toString();
+  const url = new URL(env.nexoAiLoginUrl);
+  // Nexo-AI's login accepts a return_to that, after auth, becomes the
+  // base used to build the SSO launch URL. Naming mirrors what Nexo-AI's
+  // launch URL builder expects.
+  url.searchParams.set("engine", "nexoobs");
+  url.searchParams.set("return_to", returnTo);
+  return url.toString();
 }
