@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolvePublicOrigin } from "@/lib/env";
 import { SESSION_COOKIE_NAME } from "@/lib/session";
 
 /** GET or POST — clear the session cookie and bounce home. */
@@ -10,7 +11,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 }
 
 function logout(request: NextRequest): NextResponse {
-  const home = new URL("/", request.url);
+  const home = new URL("/", resolvePublicOrigin(request));
   const response = NextResponse.redirect(home, { status: 303 });
   response.cookies.delete(SESSION_COOKIE_NAME);
   return response;

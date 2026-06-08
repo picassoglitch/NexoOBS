@@ -39,6 +39,26 @@ export function readNexoEnv(): NexoEnv | null {
   return { ssoSecret, adminToken, sessionSecret, publicUrl, nexoAiLoginUrl };
 }
 
+/**
+ * Resolve the public-facing origin (scheme + host) for building absolute
+ * redirect URLs. Behind Railway's proxy, `request.url` is the internal bind
+ * address (http://localhost:8080), so naive `url.origin` redirects send the
+ * browser to localhost. Priority:
+ *   1. NEXOOBS_PUBLIC_URL (authoritative — set in Railway)
+ *   2. x-forwarded-proto + x-forwarded-host (proxy-injected)
+ *   3. the request's own origin (local dev fallback)
+ */
+export function resolvePublicOrigin(request: Request): string {
+  const fromEnv = process.env.NEXOOBS_PUBLIC_URL;
+  if (fromEnv) return fromEnv.replace(/\/$/, "");
+
+  const proto = request.headers.get("x-forwarded-proto");
+  const host = request.headers.get("x-forwarded-host");
+  if (proto && host) return `${proto}://${host}`;
+
+  return new URL(request.url).origin;
+}
+
 /** List the env vars that are missing — used by the login page to tell
  *  operators exactly what to set in Railway. Returns [] when all present. */
 export function missingNexoEnvVars(): string[] {

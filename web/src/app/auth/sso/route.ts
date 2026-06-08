@@ -12,20 +12,23 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { readNexoEnv } from "@/lib/env";
+import { readNexoEnv, resolvePublicOrigin } from "@/lib/env";
 import { signSession, SESSION_COOKIE_NAME, SESSION_TTL_SECONDS } from "@/lib/session";
 import { SsoTokenError, verifySsoToken } from "@/lib/sso";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const url = new URL(request.url);
   const token = url.searchParams.get("token");
+  // Public origin (not request.url — that's the internal localhost bind
+  // behind Railway's proxy). All redirects build off this.
+  const origin = resolvePublicOrigin(request);
 
   const env = readNexoEnv();
   if (!env) {
-    return redirectToLogin(url, "service_not_configured");
+    return redirectToLogin(origin, "service_not_configured");
   }
   if (!token) {
-    return redirectToLogin(url, "missing_token");
+    return redirectToLogin(origin, "missing_token");
   }
 
   let claims;
@@ -33,7 +36,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     claims = await verifySsoToken(token, { secret: env.ssoSecret });
   } catch (e) {
     const reason = e instanceof SsoTokenError ? e.message : "verify_failed";
-    return redirectToLogin(url, reason);
+    return redirectToLogin(origin, reason);
   }
 
   const cookieValue = await signSession(
@@ -46,22 +49,22 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     env.sessionSecret,
   );
 
-  const dashboard = new URL("/dashboard", url.origin);
+  const dashboard = new URL("/dashboard", origin);
   const response = NextResponse.redirect(dashboard, { status: 303 });
   response.cookies.set({
     name: SESSION_COOKIE_NAME,
     value: cookieValue,
     httpOnly: true,
     sameSite: "lax",
-    secure: url.protocol === "https:",
+    secure: origin.startsWith("https:"),
     path: "/",
     maxAge: SESSION_TTL_SECONDS,
   });
   return response;
 }
 
-function redirectToLogin(reqUrl: URL, reason: string): NextResponse {
-  const login = new URL("/login", reqUrl.origin);
+function redirectToLogin(origin: string, reason: string): NextResponse {
+  const login = new URL("/login", origin);
   login.searchParams.set("error", reason);
   return NextResponse.redirect(login, { status: 303 });
 }
