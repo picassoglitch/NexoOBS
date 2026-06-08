@@ -44,3 +44,19 @@ export function buildIngest(
     streamKey,
   };
 }
+
+/**
+ * HLS playback URL for the live preview. MediaMTX serves HLS at
+ * `<httpBase>/<path>/index.m3u8` where path = `live/<streamKey>`. Returns
+ * null when the relay HLS base isn't configured (preview stays in the
+ * "no signal" placeholder). The RTMP push path and the relay's RTMP `live`
+ * app share the same stream key, so the HLS path mirrors it.
+ */
+export function buildHlsUrl(
+  streamKey: string,
+  relayHlsBase: string | null,
+): string | null {
+  if (!relayHlsBase) return null;
+  const base = relayHlsBase.replace(/\/+$/, "");
+  return `${base}/live/${streamKey}/index.m3u8`;
+}
