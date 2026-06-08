@@ -6,6 +6,8 @@ import {
   DestinationConfig,
   DestinationStatus,
   PLATFORM_META,
+  PLATFORM_ORDER,
+  PlatformId,
 } from "@/lib/destinations";
 import {
   AlertIcon,
@@ -16,13 +18,15 @@ import {
   PlusIcon,
 } from "./icons";
 
+type Dest = DestinationConfig & { id: string };
+
 interface ChannelsPanelProps {
-  destinations: DestinationConfig[];
-  onToggle: (index: number) => void;
-  onAddChannel: () => void;
+  destinations: Dest[];
+  onToggle: (id: string) => void;
+  onAddChannel: (platformId: PlatformId) => void;
   onUpdateTitles: () => void;
-  onReconnect: (index: number) => void;
-  onApply: (index: number) => void;
+  onRemove: (id: string) => void;
+  busy?: boolean;
 }
 
 type Tab = "channels" | "chat";
@@ -56,8 +60,8 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
           onToggle={props.onToggle}
           onAddChannel={props.onAddChannel}
           onUpdateTitles={props.onUpdateTitles}
-          onReconnect={props.onReconnect}
-          onApply={props.onApply}
+          onRemove={props.onRemove}
+          busy={props.busy}
         />
       ) : (
         <ChatTab />
@@ -93,13 +97,33 @@ function TabButton({
   );
 }
 
-function ChannelsTab(
-  props: Omit<ChannelsPanelProps, "destinations"> & {
-    activeCount: number;
-    total: number;
-    destinations: DestinationConfig[];
-  },
-) {
+function ChannelsTab({
+  destinations,
+  activeCount,
+  total,
+  onToggle,
+  onAddChannel,
+  onUpdateTitles,
+  onRemove,
+  busy,
+}: {
+  destinations: Dest[];
+  activeCount: number;
+  total: number;
+  onToggle: (id: string) => void;
+  onAddChannel: (platformId: PlatformId) => void;
+  onUpdateTitles: () => void;
+  onRemove: (id: string) => void;
+  busy?: boolean;
+}) {
+  const [picking, setPicking] = useState(false);
+
+  // Platforms that broadcast and aren't connected yet.
+  const used = new Set(destinations.map((d) => d.platformId));
+  const available = PLATFORM_ORDER.filter(
+    (id) => PLATFORM_META[id].supportsBroadcast && !used.has(id),
+  );
+
   return (
     <div className="flex flex-col flex-1">
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
@@ -109,46 +133,71 @@ function ChannelsTab(
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 px-4">
+      <div className="grid grid-cols-2 gap-2 px-4 relative">
         <button
-          onClick={props.onAddChannel}
-          className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg border border-border bg-surface-elevated text-xs font-semibold hover:bg-surface-high transition"
+          onClick={() => setPicking((v) => !v)}
+          disabled={busy || available.length === 0}
+          className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg border border-border bg-surface-elevated text-xs font-semibold hover:bg-surface-high transition disabled:opacity-50"
         >
           <PlusIcon className="w-4 h-4" />
           Add Channel
         </button>
         <button
-          onClick={props.onUpdateTitles}
-          className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg border border-border bg-surface-elevated text-xs font-semibold hover:bg-surface-high transition"
+          onClick={onUpdateTitles}
+          disabled={busy}
+          className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg border border-border bg-surface-elevated text-xs font-semibold hover:bg-surface-high transition disabled:opacity-50"
         >
           <EditIcon className="w-3.5 h-3.5" />
           Update Titles
         </button>
+
+        {picking && available.length > 0 && (
+          <div className="absolute top-full left-4 mt-1 z-20 w-56 rounded-lg border border-border bg-surface-elevated shadow-xl p-1">
+            {available.map((id) => {
+              const meta = PLATFORM_META[id];
+              return (
+                <button
+                  key={id}
+                  onClick={() => {
+                    onAddChannel(id);
+                    setPicking(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-xs text-text-secondary hover:bg-surface-high hover:text-text-primary transition text-left"
+                >
+                  <span
+                    className="w-2.5 h-2.5 rounded-full"
+                    style={{ backgroundColor: `var(--color-${meta.colorVar})` }}
+                  />
+                  {meta.displayName}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between px-4 mt-3 mb-2">
         <span className="text-xs text-text-tertiary">
-          {props.activeCount} of {props.total} active{" "}
-          <button className="text-accent hover:underline ml-1">Get More</button>
-        </span>
-        <span className="text-[10px] text-text-tertiary">
-          Toggle all{" "}
-          <button className="hover:text-text-primary font-bold">OFF</button>
-          {" / "}
-          <button className="hover:text-text-primary font-bold">ON</button>
+          {activeCount} of {total} active
         </span>
       </div>
 
       <ul className="px-3 pb-3 flex-1 overflow-y-auto">
-        {props.destinations.map((d, i) => (
-          <ChannelRow
-            key={`${d.platformId}-${d.channelHandle}-${i}`}
-            destination={d}
-            onToggle={() => props.onToggle(i)}
-            onReconnect={() => props.onReconnect(i)}
-            onApply={() => props.onApply(i)}
-          />
-        ))}
+        {destinations.length === 0 ? (
+          <li className="px-3 py-8 text-center text-xs text-text-tertiary">
+            Sin canales aún. Pulsa <b className="text-text-secondary">Add Channel</b> para conectar tu primera plataforma.
+          </li>
+        ) : (
+          destinations.map((d) => (
+            <ChannelRow
+              key={d.id}
+              destination={d}
+              onToggle={() => onToggle(d.id)}
+              onRemove={() => onRemove(d.id)}
+              busy={busy}
+            />
+          ))
+        )}
       </ul>
     </div>
   );
@@ -157,28 +206,28 @@ function ChannelsTab(
 function ChannelRow({
   destination,
   onToggle,
-  onReconnect,
-  onApply,
+  onRemove,
+  busy,
 }: {
-  destination: DestinationConfig;
+  destination: Dest;
   onToggle: () => void;
-  onReconnect: () => void;
-  onApply: () => void;
+  onRemove: () => void;
+  busy?: boolean;
 }) {
   const meta = PLATFORM_META[destination.platformId];
   const color = `var(--color-${meta.colorVar})`;
   const status = destination.status;
-  const isMuted = status?.kind === "pending_approval" || status?.kind === "expired";
+  const handle = destination.channelHandle || meta.displayName;
 
   return (
     <li className="mb-1.5">
-      <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-surface-elevated transition">
+      <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-surface-elevated transition group">
         <div className="relative shrink-0">
           <div
             className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-text-primary"
             style={{ backgroundColor: "var(--color-surface-high)" }}
           >
-            {avatarInitial(destination.channelHandle)}
+            {avatarInitial(handle)}
           </div>
           <div
             className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-surface"
@@ -188,11 +237,11 @@ function ChannelRow({
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className={`text-xs font-semibold truncate ${isMuted ? "text-text-tertiary" : "text-text-primary"}`}>
-            {destination.channelHandle}
+          <div className="text-xs font-semibold truncate text-text-primary">
+            {handle}
           </div>
           <div className="text-[11px] text-text-tertiary truncate">
-            {destination.streamTitle}
+            {destination.streamTitle || meta.displayName}
           </div>
           {status?.kind === "offline" && (
             <div className="flex items-center gap-1.5 mt-0.5">
@@ -203,6 +252,16 @@ function ChannelRow({
         </div>
 
         <button
+          onClick={onRemove}
+          disabled={busy}
+          className="p-1 text-text-tertiary hover:text-bad opacity-0 group-hover:opacity-100 transition disabled:opacity-30"
+          aria-label="Quitar canal"
+          title="Quitar"
+        >
+          ✕
+        </button>
+
+        <button
           className="p-1 text-text-tertiary hover:text-text-primary"
           aria-label="Output mode"
           title="Output mode"
@@ -210,38 +269,24 @@ function ChannelRow({
           <MonitorIcon className="w-4 h-4" />
         </button>
 
-        <button className="text-[11px] text-text-secondary hover:text-text-primary font-medium px-1">
-          Edit
-        </button>
-
-        <Toggle value={destination.enabled} onChange={onToggle} accent={color} />
+        <Toggle value={destination.enabled} onChange={onToggle} accent={color} busy={busy} />
       </div>
 
       {status && status.kind !== "ok" && status.kind !== "offline" && (
-        <StatusBanner status={status} onReconnect={onReconnect} onApply={onApply} />
+        <StatusBanner status={status} />
       )}
     </li>
   );
 }
 
-function StatusBanner({
-  status,
-  onReconnect,
-  onApply,
-}: {
-  status: DestinationStatus;
-  onReconnect: () => void;
-  onApply: () => void;
-}) {
+function StatusBanner({ status }: { status: DestinationStatus }) {
   if (status.kind === "expired") {
     return (
       <div className="mt-1 mx-2 px-3 py-2 rounded-md bg-bad/10 border border-bad/40 flex items-center gap-2">
         <AlertIcon className="w-3.5 h-3.5 text-bad shrink-0" />
         <span className="text-[11px] text-text-secondary flex-1">
           Account access expired.{" "}
-          <button onClick={onReconnect} className="text-text-primary font-semibold underline hover:text-bad">
-            Reconnect
-          </button>
+          <span className="text-text-primary font-semibold">Reconnect</span>
         </span>
       </div>
     );
@@ -252,9 +297,7 @@ function StatusBanner({
         <AlertIcon className="w-3.5 h-3.5 text-bad shrink-0" />
         <span className="text-[11px] text-text-secondary flex-1">
           {status.platformName} hasn&apos;t approved your account.{" "}
-          <button onClick={onApply} className="text-text-primary font-semibold underline hover:text-bad">
-            Apply
-          </button>
+          <span className="text-text-primary font-semibold">Apply</span>
         </span>
       </div>
     );
@@ -266,17 +309,20 @@ function Toggle({
   value,
   onChange,
   accent,
+  busy,
 }: {
   value: boolean;
   onChange: () => void;
   accent: string;
+  busy?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onChange}
+      disabled={busy}
       aria-pressed={value}
-      className="relative inline-flex h-5 w-9 items-center rounded-full transition shrink-0"
+      className="relative inline-flex h-5 w-9 items-center rounded-full transition shrink-0 disabled:opacity-50"
       style={{ backgroundColor: value ? accent : "var(--color-surface-high)" }}
     >
       <span

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { IngestCredentials } from "@/lib/mock-data";
+import { IngestCredentials } from "@/lib/ingest";
 import { CopyIcon, RefreshIcon } from "./icons";
 
 type Protocol = "rtmp" | "rtmps" | "srt" | "whip";
