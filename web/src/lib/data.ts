@@ -74,6 +74,18 @@ export async function getOrCreateSession(
   return fresh;
 }
 
+/** Read-only stream-key lookup (no create). Used by the preview proxy on
+ *  every segment request, so it must stay a single cheap select. */
+export async function getStreamKey(tenantId: string): Promise<string | null> {
+  const db = getSupabaseAdmin();
+  const { data } = await db
+    .from("nexoobs_sessions")
+    .select("stream_key")
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  return (data?.stream_key as string | undefined) ?? null;
+}
+
 export async function updateSession(
   tenantId: string,
   patch: Partial<TenantSession>,

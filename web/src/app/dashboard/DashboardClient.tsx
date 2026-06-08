@@ -6,7 +6,7 @@ import { Header } from "@/components/Header";
 import { EncoderPanel } from "@/components/EncoderPanel";
 import { ChannelsPanel } from "@/components/ChannelsPanel";
 import { Footer } from "@/components/Footer";
-import { buildHlsUrl, buildIngest } from "@/lib/ingest";
+import { buildIngest } from "@/lib/ingest";
 import { StreamPreview } from "@/components/StreamPreview";
 import { DestinationConfig, PlatformId } from "@/lib/destinations";
 import { ChannelPatch } from "@/components/ChannelEditModal";
@@ -30,7 +30,7 @@ interface Props {
   initialRecord: boolean;
   initialStreamKey: string;
   relayRtmp: string;
-  relayHls: string | null;
+  previewEnabled: boolean;
   destinations: Dest[];
 }
 
@@ -45,7 +45,7 @@ export function DashboardClient({
   initialRecord,
   initialStreamKey,
   relayRtmp,
-  relayHls,
+  previewEnabled,
   destinations,
 }: Props) {
   const router = useRouter();
@@ -99,7 +99,7 @@ export function DashboardClient({
       <main className="flex-1 px-4 py-6 sm:px-8 sm:py-8 max-w-7xl mx-auto w-full">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
           <div className="space-y-6">
-            <StreamPreview hlsUrl={buildHlsUrl(streamKey, relayHls)} />
+            <StreamPreview hlsUrl={previewEnabled ? "/api/preview/index.m3u8" : null} />
             <EncoderPanel
               ingest={ingest}
               isLive={isLive}

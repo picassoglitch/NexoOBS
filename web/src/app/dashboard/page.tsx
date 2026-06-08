@@ -38,9 +38,9 @@ export default async function DashboardPage() {
   // Set in Railway as NEXOOBS_RELAY_RTMP_URL.
   const relayRtmp =
     process.env.NEXOOBS_RELAY_RTMP_URL ?? "rtmp://ingest.nexo-ai.world/live";
-  // HTTP base where the relay serves HLS (MediaMTX hls port, exposed via a
-  // Railway HTTP domain). null → preview shows the "not available" state.
-  const relayHls = process.env.NEXOOBS_RELAY_HLS_URL ?? null;
+  // Preview is available when the relay's private HLS address is set; the
+  // player then pulls from the authenticated same-origin proxy.
+  const previewEnabled = Boolean(process.env.NEXOOBS_RELAY_INTERNAL_HLS);
 
   return (
     <DashboardClient
@@ -49,7 +49,7 @@ export default async function DashboardPage() {
       initialRecord={tenantSession.recordEnabled}
       initialStreamKey={tenantSession.streamKey}
       relayRtmp={relayRtmp}
-      relayHls={relayHls}
+      previewEnabled={previewEnabled}
       destinations={destinations}
     />
   );
