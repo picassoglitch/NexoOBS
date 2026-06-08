@@ -40,8 +40,14 @@ export async function toggleLiveAction(value: boolean): Promise<void> {
 }
 
 export async function setClipsEnabledAction(value: boolean): Promise<void> {
-  const tenant = await requireTenant();
-  await updateSession(tenant, { clipsEnabled: value });
+  // Turning the NexoClip connection ON is a full-access-only action —
+  // enforce server-side, not just by hiding the switch.
+  const session = await getServerSession();
+  if (!session) throw new Error("unauthorized");
+  if (value && (session.tier ?? "").toLowerCase() !== "all_access") {
+    throw new Error("forbidden: full access required");
+  }
+  await updateSession(session.tenant_id, { clipsEnabled: value });
   revalidatePath("/dashboard");
 }
 

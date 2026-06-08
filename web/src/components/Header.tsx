@@ -7,12 +7,13 @@ interface HeaderProps {
   title: string;
   isLive: boolean;
   recordEnabled: boolean;
+  /** NexoClip connection ON/OFF — when on, streams flow to NexoClip for clips. */
   clipsEnabled?: boolean;
-  /** Whether the Get Clips ↔ NexoClip feature is available (full access). */
+  /** Whether the connection switch can be toggled (full access only). */
   clipsAvailable?: boolean;
   onTitleChange: (next: string) => void;
   onRecordToggle: () => void;
-  onGetClips: () => void;
+  onToggleClips: () => void;
 }
 
 export function Header({
@@ -23,7 +24,7 @@ export function Header({
   clipsAvailable = true,
   onTitleChange,
   onRecordToggle,
-  onGetClips,
+  onToggleClips,
 }: HeaderProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(title);
@@ -97,26 +98,40 @@ export function Header({
         <span className="text-xs font-medium text-text-secondary">Record</span>
       </div>
 
-      {clipsAvailable && (
+      {/* NexoClip connection switch — when ON, streams flow to NexoClip and
+          clips are generated. Only full-access users can flip it on. */}
+      <div
+        className="flex items-center gap-2 px-2"
+        title={
+          clipsAvailable
+            ? clipsEnabled
+              ? "Conectado a NexoClip — los streams generan clips"
+              : "Conectar con NexoClip para generar clips"
+            : "Requiere Full Access"
+        }
+      >
+        <ClipsIcon
+          className={`w-4 h-4 ${clipsEnabled && clipsAvailable ? "text-accent" : "text-text-tertiary"}`}
+        />
         <button
           type="button"
-          onClick={onGetClips}
-          title={
-            clipsEnabled
-              ? "Clips activados — abre NexoClip"
-              : "Activar clips y abrir NexoClip"
-          }
-          className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-md border transition ${
-            clipsEnabled
-              ? "border-accent/50 bg-accent-soft/40 text-accent"
-              : "border-border bg-surface hover:bg-surface-elevated"
+          onClick={onToggleClips}
+          disabled={!clipsAvailable}
+          aria-pressed={!!clipsEnabled}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition disabled:opacity-40 disabled:cursor-not-allowed ${
+            clipsEnabled && clipsAvailable ? "bg-accent" : "bg-surface-high"
           }`}
         >
-          <ClipsIcon className="w-4 h-4 text-accent" />
-          <span>Get Clips</span>
-          {clipsEnabled && <span className="w-1.5 h-1.5 rounded-full bg-accent" />}
+          <span
+            className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
+              clipsEnabled && clipsAvailable ? "translate-x-5" : "translate-x-0.5"
+            }`}
+          />
         </button>
-      )}
+        <span className="text-xs font-medium text-text-secondary hidden sm:inline">
+          NexoClip
+        </span>
+      </div>
 
       {isLive && (
         <span className="ml-1 inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-bad/15 text-bad text-[10px] font-bold tracking-wider">

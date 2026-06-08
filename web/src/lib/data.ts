@@ -78,8 +78,9 @@ export async function getOrCreateSession(
   return fresh;
 }
 
-/** Read-only: is "Get Clips" on for this tenant? Used by the started/ended
- *  webhooks to decide whether to forward the lifecycle to NexoClip. */
+/** Read-only: is the NexoClip connection on for this tenant? Source of truth
+ *  for the bidirectional switch (NexoOBS header ↔ NexoClip Live page) and the
+ *  started/ended forwarding gate. */
 export async function getClipsEnabled(tenantId: string): Promise<boolean> {
   const db = getSupabaseAdmin();
   const { data } = await db
@@ -88,6 +89,16 @@ export async function getClipsEnabled(tenantId: string): Promise<boolean> {
     .eq("tenant_id", tenantId)
     .maybeSingle();
   return (data?.clips_enabled as boolean | null) ?? false;
+}
+
+/** Set the connection flag, creating the session row if the tenant hasn't
+ *  opened NexoOBS yet (so the switch works from the NexoClip side too). */
+export async function setClipsEnabled(
+  tenantId: string,
+  enabled: boolean,
+): Promise<void> {
+  await getOrCreateSession(tenantId); // ensure row exists
+  await updateSession(tenantId, { clipsEnabled: enabled });
 }
 
 /** Read-only stream-key lookup (no create). Used by the preview proxy on
