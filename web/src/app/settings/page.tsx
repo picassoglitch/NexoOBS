@@ -1,6 +1,11 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getServerSession } from "@/lib/server-session";
 
-export default function SettingsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function SettingsPage() {
+  if (!(await getServerSession())) redirect("/login?next=/settings");
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-16 text-center">
       <h1 className="text-2xl font-bold mb-2">Settings</h1>

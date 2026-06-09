@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { missingNexoEnvVars, readNexoEnv } from "@/lib/env";
 
 interface LoginPageProps {
@@ -34,19 +33,13 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             <strong className="text-warn block mb-1">
               Servicio no configurado.
             </strong>
-            Faltan variables en Railway:
+            Faltan variables en Railway. NexoOBS no puede iniciar sesión hasta
+            que estén definidas:
             <ul className="mt-1 ml-4 list-disc font-mono text-[11px]">
               {missing.map((v) => (
                 <li key={v}>{v}</li>
               ))}
             </ul>
-            <p className="mt-2">
-              Mientras tanto puedes ir directo al{" "}
-              <Link href="/dashboard" className="text-accent underline">
-                dashboard (mock)
-              </Link>
-              .
-            </p>
           </div>
         )}
 

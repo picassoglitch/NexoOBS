@@ -3,11 +3,14 @@ import { readNexoEnv } from "@/lib/env";
 import { SESSION_COOKIE_NAME, verifySession } from "@/lib/session";
 
 /**
- * Edge-runtime middleware. Reads the NexoOBS session cookie; if missing or
- * invalid on a protected route, redirects to /login which itself shows the
- * "Sign in with Nexo-AI" button. Defensive: when env vars are missing the
- * middleware no-ops so the UI is still browsable for preview deploys (the
- * login page then surfaces which vars need to be set in Railway).
+ * Edge-runtime middleware. NexoOBS is an agent of Nexo-AI World — it only
+ * works for users signed in through Nexo-AI. Every protected route requires
+ * a valid NexoOBS session cookie (minted by /auth/sso after Nexo-AI SSO).
+ *
+ * FAIL CLOSED: no session, bad/expired cookie, OR missing server secrets all
+ * redirect to /login (which bounces to Nexo-AI). There is no
+ * unauthenticated bypass — a misconfigured deploy locks users out rather
+ * than exposing the app.
  */
 
 const PROTECTED_PREFIXES = ["/dashboard", "/settings", "/analytics"];
@@ -17,8 +20,18 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
   if (!isProtected) return NextResponse.next();
 
+  const redirectToLogin = (clearCookie: boolean): NextResponse => {
+    const login = request.nextUrl.clone();
+    login.pathname = "/login";
+    login.searchParams.set("next", pathname);
+    const response = NextResponse.redirect(login);
+    if (clearCookie) response.cookies.delete(SESSION_COOKIE_NAME);
+    return response;
+  };
+
   const env = readNexoEnv();
-  if (!env) return NextResponse.next(); // preview deploy without secrets — let through
+  // No secrets configured → we can't verify any session → fail closed.
+  if (!env) return redirectToLogin(false);
 
   const cookie = request.cookies.get(SESSION_COOKIE_NAME);
   if (cookie?.value) {
@@ -26,17 +39,12 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
       await verifySession(cookie.value, env.sessionSecret);
       return NextResponse.next();
     } catch {
-      // fall through to redirect — cookie is bad/expired
+      // bad/expired cookie → fail closed (and clear it).
+      return redirectToLogin(true);
     }
   }
 
-  const login = request.nextUrl.clone();
-  login.pathname = "/login";
-  login.searchParams.set("next", pathname);
-  const response = NextResponse.redirect(login);
-  // Clear the bad cookie so the user isn't stuck in a redirect loop.
-  if (cookie) response.cookies.delete(SESSION_COOKIE_NAME);
-  return response;
+  return redirectToLogin(false);
 }
 
 export const config = {
