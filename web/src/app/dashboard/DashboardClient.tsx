@@ -112,16 +112,23 @@ export function DashboardClient({
       <main className="flex-1 px-4 py-6 sm:px-8 sm:py-8 max-w-7xl mx-auto w-full">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
           <div className="space-y-6">
-            <StreamPreview hlsUrl={previewEnabled ? "/api/preview/index.m3u8" : null} />
-            <EncoderPanel
-              ingest={ingest}
-              isLive={isLive}
-              onRegenerateKey={() => {
-                startTransition(async () => {
-                  const fresh = await regenerateKeyAction();
-                  setStreamKey(fresh);
-                });
-              }}
+            {/* Restream-style: the encoder card lives INSIDE the player while
+                offline; the moment the feed arrives it's replaced by video. */}
+            <StreamPreview
+              hlsUrl={previewEnabled ? "/api/preview/index.m3u8" : null}
+              offlineContent={
+                <EncoderPanel
+                  embedded
+                  ingest={ingest}
+                  isLive={isLive}
+                  onRegenerateKey={() => {
+                    startTransition(async () => {
+                      const fresh = await regenerateKeyAction();
+                      setStreamKey(fresh);
+                    });
+                  }}
+                />
+              }
             />
           </div>
           <ChannelsPanel

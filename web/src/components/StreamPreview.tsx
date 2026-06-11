@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import Hls from "hls.js";
 
 type State = "connecting" | "live" | "reconnecting" | "error" | "unconfigured";
@@ -8,6 +8,9 @@ type State = "connecting" | "live" | "reconnecting" | "error" | "unconfigured";
 interface Props {
   /** HLS manifest URL, or null when the relay HLS base isn't configured. */
   hlsUrl: string | null;
+  /** Rendered INSIDE the player while there's no signal (Restream-style
+   *  "Connect your encoder" card). Disappears as soon as the feed shows. */
+  offlineContent?: ReactNode;
 }
 
 // After this many consecutive fatal errors *once we've had signal*, stop
@@ -24,7 +27,7 @@ const MAX_FATAL_BEFORE_ALERT = 6;
  *
  * HLS (not WebRTC) because Railway's HTTP proxy is TCP-only.
  */
-export function StreamPreview({ hlsUrl }: Props) {
+export function StreamPreview({ hlsUrl, offlineContent }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [state, setState] = useState<State>(
     hlsUrl ? "connecting" : "unconfigured",
@@ -138,10 +141,16 @@ export function StreamPreview({ hlsUrl }: Props) {
   }, [hlsUrl, attempt]);
 
   const showVideo = state === "live" || state === "reconnecting";
+  const showOfflineCard =
+    (state === "connecting" || state === "unconfigured") && !!offlineContent;
 
   return (
     <div className="rounded-2xl bg-surface border border-border overflow-hidden">
-      <div className="relative aspect-video bg-black">
+      {/* While the encoder card is inside the player, let the box grow past
+          16:9 so the card never clips; strict 16:9 once video shows. */}
+      <div
+        className={`relative aspect-video bg-black ${showOfflineCard ? "min-h-[35rem]" : ""}`}
+      >
         <video
           ref={videoRef}
           className={`w-full h-full object-contain ${showVideo ? "" : "opacity-0"}`}
@@ -166,60 +175,79 @@ export function StreamPreview({ hlsUrl }: Props) {
           </div>
         )}
 
-        {/* Connecting / unconfigured / error — full overlay */}
-        {(state === "connecting" ||
-          state === "unconfigured" ||
-          state === "error") && (
+        {/* Sustained mid-stream failure — alert + manual retry */}
+        {state === "error" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
-            {state === "error" ? (
-              <>
-                <div className="w-12 h-12 rounded-full bg-bad/15 border border-bad/40 flex items-center justify-center mb-3">
-                  <span className="text-bad text-xl leading-none">!</span>
-                </div>
-                <p className="text-sm font-semibold text-bad">Señal perdida</p>
-                <p className="text-[11px] text-text-tertiary mt-1 max-w-xs">
-                  Se interrumpió la conexión con el relay (red o el encoder dejó
-                  de transmitir).
-                </p>
-                <button
-                  onClick={() => {
-                    setState("connecting");
-                    setAttempt((a) => a + 1);
-                  }}
-                  className="mt-3 px-3 py-1.5 rounded-md bg-accent text-white text-xs font-semibold hover:opacity-90 transition"
-                >
-                  Reintentar
-                </button>
-              </>
-            ) : state === "unconfigured" ? (
-              <>
-                <div className="w-12 h-12 rounded-full border border-border flex items-center justify-center mb-3">
-                  <span className="w-2.5 h-2.5 rounded-full bg-text-tertiary" />
-                </div>
-                <p className="text-sm font-semibold text-text-secondary">
-                  Preview no disponible
-                </p>
-                <p className="text-[11px] text-text-tertiary mt-1 max-w-xs">
-                  El relay aún no expone HLS. Configura{" "}
-                  <code className="font-mono">NEXOOBS_RELAY_INTERNAL_HLS</code>.
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="w-12 h-12 rounded-full border border-border flex items-center justify-center mb-3">
-                  <span className="w-3 h-3 rounded-full border-2 border-text-tertiary border-t-transparent animate-spin" />
-                </div>
-                <p className="text-sm font-semibold text-text-secondary">
-                  Esperando señal…
-                </p>
-                <p className="text-[11px] text-text-tertiary mt-1 max-w-xs">
-                  Conecta tu encoder al relay. El preview aparece unos segundos
-                  después de empezar a transmitir.
-                </p>
-              </>
-            )}
+            <div className="w-12 h-12 rounded-full bg-bad/15 border border-bad/40 flex items-center justify-center mb-3">
+              <span className="text-bad text-xl leading-none">!</span>
+            </div>
+            <p className="text-sm font-semibold text-bad">Señal perdida</p>
+            <p className="text-[11px] text-text-tertiary mt-1 max-w-xs">
+              Se interrumpió la conexión con el relay (red o el encoder dejó
+              de transmitir).
+            </p>
+            <button
+              onClick={() => {
+                setState("connecting");
+                setAttempt((a) => a + 1);
+              }}
+              className="mt-3 px-3 py-1.5 rounded-md bg-accent text-white text-xs font-semibold hover:opacity-90 transition"
+            >
+              Reintentar
+            </button>
           </div>
         )}
+
+        {/* No signal yet — the encoder card lives inside the player
+            (Restream-style) and vanishes when the feed arrives. */}
+        {(state === "connecting" || state === "unconfigured") &&
+          (offlineContent ? (
+            <div className="absolute inset-0 overflow-y-auto">
+              <span className="absolute top-3 left-3 z-10 px-2 py-1 rounded-md bg-surface-high text-text-tertiary text-[10px] font-bold tracking-wider">
+                OFFLINE
+              </span>
+              <div className="min-h-full flex flex-col items-center justify-center px-6 py-8">
+                <div className="w-full max-w-md">{offlineContent}</div>
+                {state === "unconfigured" && (
+                  <p className="text-[10px] text-text-tertiary mt-3 text-center">
+                    Preview no disponible — el relay aún no expone HLS (
+                    <code className="font-mono">NEXOOBS_RELAY_INTERNAL_HLS</code>
+                    ).
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
+              {state === "unconfigured" ? (
+                <>
+                  <div className="w-12 h-12 rounded-full border border-border flex items-center justify-center mb-3">
+                    <span className="w-2.5 h-2.5 rounded-full bg-text-tertiary" />
+                  </div>
+                  <p className="text-sm font-semibold text-text-secondary">
+                    Preview no disponible
+                  </p>
+                  <p className="text-[11px] text-text-tertiary mt-1 max-w-xs">
+                    El relay aún no expone HLS. Configura{" "}
+                    <code className="font-mono">NEXOOBS_RELAY_INTERNAL_HLS</code>.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="w-12 h-12 rounded-full border border-border flex items-center justify-center mb-3">
+                    <span className="w-3 h-3 rounded-full border-2 border-text-tertiary border-t-transparent animate-spin" />
+                  </div>
+                  <p className="text-sm font-semibold text-text-secondary">
+                    Esperando señal…
+                  </p>
+                  <p className="text-[11px] text-text-tertiary mt-1 max-w-xs">
+                    Conecta tu encoder al relay. El preview aparece unos
+                    segundos después de empezar a transmitir.
+                  </p>
+                </>
+              )}
+            </div>
+          ))}
       </div>
     </div>
   );

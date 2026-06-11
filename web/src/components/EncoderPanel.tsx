@@ -17,12 +17,16 @@ interface EncoderPanelProps {
   ingest: IngestCredentials;
   isLive: boolean;
   onRegenerateKey: () => void;
+  /** Rendered inside the player (StreamPreview's offline overlay): no card
+   *  chrome or status badge — the player provides both. */
+  embedded?: boolean;
 }
 
 export function EncoderPanel({
   ingest,
   isLive,
   onRegenerateKey,
+  embedded = false,
 }: EncoderPanelProps) {
   const [protocol, setProtocol] = useState<Protocol>("rtmp");
   const [keyVisible, setKeyVisible] = useState(false);
@@ -43,19 +47,27 @@ export function EncoderPanel({
   const showKeyField = protocol !== "srt"; // SRT carries the key in streamid
 
   return (
-    <section className="rounded-2xl bg-surface border border-border p-6 sm:p-8 relative overflow-hidden">
-      <span
-        className={`absolute top-4 left-4 inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold tracking-wider ${
-          isLive
-            ? "bg-bad/15 text-bad"
-            : "bg-surface-high text-text-tertiary"
-        }`}
-      >
-        {isLive && <span className="w-1.5 h-1.5 rounded-full bg-bad animate-pulse" />}
-        {isLive ? "LIVE" : "OFFLINE"}
-      </span>
+    <section
+      className={
+        embedded
+          ? "w-full"
+          : "rounded-2xl bg-surface border border-border p-6 sm:p-8 relative overflow-hidden"
+      }
+    >
+      {!embedded && (
+        <span
+          className={`absolute top-4 left-4 inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold tracking-wider ${
+            isLive
+              ? "bg-bad/15 text-bad"
+              : "bg-surface-high text-text-tertiary"
+          }`}
+        >
+          {isLive && <span className="w-1.5 h-1.5 rounded-full bg-bad animate-pulse" />}
+          {isLive ? "LIVE" : "OFFLINE"}
+        </span>
+      )}
 
-      <div className="text-center mb-5 mt-2">
+      <div className={`text-center ${embedded ? "mb-4" : "mb-5 mt-2"}`}>
         <h2 className="text-xl font-bold text-text-primary">
           Connect your encoder
         </h2>
@@ -66,7 +78,9 @@ export function EncoderPanel({
 
       <div
         role="tablist"
-        className="inline-flex p-1 rounded-lg bg-surface-elevated border border-border mb-5"
+        className={`inline-flex p-1 rounded-lg bg-surface-elevated border border-border ${
+          embedded ? "mb-4" : "mb-5"
+        }`}
       >
         {TABS.map((t) => (
           <button
@@ -115,7 +129,9 @@ export function EncoderPanel({
         </div>
       )}
 
-      <div className="mt-5 rounded-lg bg-accent-soft/40 border border-accent/30 p-3 flex items-center justify-between gap-3">
+      <div
+        className={`${embedded ? "mt-4" : "mt-5"} rounded-lg bg-accent-soft/40 border border-accent/30 p-3 flex items-center justify-between gap-3`}
+      >
         <p className="text-xs text-text-secondary">
           ¿Evento importante?{" "}
           <button className="text-accent font-semibold hover:underline">
