@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/server-session";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { getDestinations, getOrCreateSession } from "@/lib/data";
+import { isFullAccessTier } from "@/lib/tier";
 import { DashboardClient } from "./DashboardClient";
 
 // Per-tenant data — never cache across requests.
@@ -41,9 +42,9 @@ export default async function DashboardPage() {
   // Preview is available when the relay's private HLS address is set; the
   // player then pulls from the authenticated same-origin proxy.
   const previewEnabled = Boolean(process.env.NEXOOBS_RELAY_INTERNAL_HLS);
-  // The NexoClip connection switch is full-access only. SSO tier arrives
-  // lowercased ('all_access').
-  const isFullAccess = (session.tier ?? "").toLowerCase() === "all_access";
+  // The NexoClip connection switch is full-access only (ALL_ACCESS, PARTNER
+  // or VIP). Definition lives in @/lib/tier so the server-side gate matches.
+  const isFullAccess = isFullAccessTier(session.tier);
 
   return (
     <DashboardClient

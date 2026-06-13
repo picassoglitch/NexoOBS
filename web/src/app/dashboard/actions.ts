@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "@/lib/server-session";
 import { PlatformId } from "@/lib/destinations";
+import { isFullAccessTier } from "@/lib/tier";
 import {
   addDestination,
   regenerateStreamKey,
@@ -44,7 +45,7 @@ export async function setClipsEnabledAction(value: boolean): Promise<void> {
   // enforce server-side, not just by hiding the switch.
   const session = await getServerSession();
   if (!session) throw new Error("unauthorized");
-  if (value && (session.tier ?? "").toLowerCase() !== "all_access") {
+  if (value && !isFullAccessTier(session.tier)) {
     throw new Error("forbidden: full access required");
   }
   await updateSession(session.tenant_id, { clipsEnabled: value });
