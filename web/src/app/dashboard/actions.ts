@@ -28,12 +28,6 @@ export async function setTitleAction(title: string): Promise<void> {
   revalidatePath("/dashboard");
 }
 
-export async function toggleRecordAction(value: boolean): Promise<void> {
-  const tenant = await requireTenant();
-  await updateSession(tenant, { recordEnabled: value });
-  revalidatePath("/dashboard");
-}
-
 export async function toggleLiveAction(value: boolean): Promise<void> {
   const tenant = await requireTenant();
   await updateSession(tenant, { isLive: value });

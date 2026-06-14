@@ -22,7 +22,6 @@ import {
 export interface TenantSession {
   title: string;
   isLive: boolean;
-  recordEnabled: boolean;
   clipsEnabled: boolean;
   streamKey: string;
   /** Full broadcast-metadata composer state (title/description/category/…). */
@@ -50,9 +49,7 @@ export async function getOrCreateSession(
   const db = getSupabaseAdmin();
   const { data } = await db
     .from("nexoobs_sessions")
-    .select(
-      "title, is_live, record_enabled, clips_enabled, stream_key, broadcast_meta",
-    )
+    .select("title, is_live, clips_enabled, stream_key, broadcast_meta")
     .eq("tenant_id", tenantId)
     .maybeSingle();
 
@@ -61,7 +58,6 @@ export async function getOrCreateSession(
     return {
       title,
       isLive: data.is_live as boolean,
-      recordEnabled: data.record_enabled as boolean,
       clipsEnabled: (data.clips_enabled as boolean | null) ?? true,
       streamKey: data.stream_key as string,
       broadcastMeta: normalizeBroadcastMeta(data.broadcast_meta, title),
@@ -71,16 +67,16 @@ export async function getOrCreateSession(
   const fresh: TenantSession = {
     title: DEFAULT_TITLE,
     isLive: false,
-    recordEnabled: true,
     clipsEnabled: true,
     streamKey: freshStreamKey(),
     broadcastMeta: normalizeBroadcastMeta(null, DEFAULT_TITLE),
   };
+  // record_enabled is omitted on insert — the column keeps its DB default
+  // (true). Recording isn't a user-facing toggle anymore (NexoClip drives it).
   await db.from("nexoobs_sessions").insert({
     tenant_id: tenantId,
     title: fresh.title,
     is_live: fresh.isLive,
-    record_enabled: fresh.recordEnabled,
     clips_enabled: fresh.clipsEnabled,
     stream_key: fresh.streamKey,
     broadcast_meta: fresh.broadcastMeta,
@@ -131,7 +127,6 @@ export async function updateSession(
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.title !== undefined) row.title = patch.title;
   if (patch.isLive !== undefined) row.is_live = patch.isLive;
-  if (patch.recordEnabled !== undefined) row.record_enabled = patch.recordEnabled;
   if (patch.clipsEnabled !== undefined) row.clips_enabled = patch.clipsEnabled;
   if (patch.streamKey !== undefined) row.stream_key = patch.streamKey;
   if (patch.broadcastMeta !== undefined) row.broadcast_meta = patch.broadcastMeta;

@@ -19,7 +19,6 @@ import {
   setTitleAction,
   toggleDestinationAction,
   toggleLiveAction,
-  toggleRecordAction,
   updateDestinationAction,
 } from "./actions";
 
@@ -28,7 +27,6 @@ type Dest = DestinationConfig & { id: string };
 interface Props {
   initialTitle: string;
   initialIsLive: boolean;
-  initialRecord: boolean;
   initialClips: boolean;
   initialStreamKey: string;
   initialBroadcastMeta: BroadcastMeta;
@@ -47,7 +45,6 @@ type OptimisticAction =
 export function DashboardClient({
   initialTitle,
   initialIsLive,
-  initialRecord,
   initialClips,
   initialStreamKey,
   initialBroadcastMeta,
@@ -60,7 +57,6 @@ export function DashboardClient({
   const router = useRouter();
   const [title, setTitle] = useState(initialTitle);
   const [isLive, setIsLive] = useState(initialIsLive);
-  const [recordEnabled, setRecordEnabled] = useState(initialRecord);
   const [clipsEnabled, setClipsEnabled] = useState(initialClips);
   const [streamKey, setStreamKey] = useState(initialStreamKey);
   const [broadcastMeta, setBroadcastMeta] = useState(initialBroadcastMeta);
@@ -92,17 +88,11 @@ export function DashboardClient({
       <Header
         title={title}
         isLive={isLive}
-        recordEnabled={recordEnabled}
         onTitleChange={(next) => {
           setTitle(next);
           // Keep the composer's title field in sync with the header edit.
           setBroadcastMeta((m) => ({ ...m, title: next }));
           startTransition(() => setTitleAction(next));
-        }}
-        onRecordToggle={() => {
-          const next = !recordEnabled;
-          setRecordEnabled(next);
-          startTransition(() => toggleRecordAction(next));
         }}
         clipsEnabled={clipsEnabled}
         clipsAvailable={isFullAccess}

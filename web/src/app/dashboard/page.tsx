@@ -54,7 +54,6 @@ export default async function DashboardPage() {
     <DashboardClient
       initialTitle={tenantSession.title}
       initialIsLive={tenantSession.isLive}
-      initialRecord={tenantSession.recordEnabled}
       initialClips={tenantSession.clipsEnabled}
       initialStreamKey={tenantSession.streamKey}
       initialBroadcastMeta={tenantSession.broadcastMeta}

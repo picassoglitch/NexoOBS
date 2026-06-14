@@ -7,7 +7,6 @@ import { HomeIcon, ClipsIcon, ChevronDownIcon } from "./icons";
 interface HeaderProps {
   title: string;
   isLive: boolean;
-  recordEnabled: boolean;
   /** NexoClip connection ON/OFF — when on, streams flow to NexoClip for clips. */
   clipsEnabled?: boolean;
   /** Whether the connection switch can be toggled (full access only). */
@@ -17,20 +16,17 @@ interface HeaderProps {
   /** Where Upgrade sends the user (Nexo-AI World). */
   upgradeUrl?: string;
   onTitleChange: (next: string) => void;
-  onRecordToggle: () => void;
   onToggleClips: () => void;
 }
 
 export function Header({
   title,
   isLive,
-  recordEnabled,
   clipsEnabled,
   clipsAvailable = true,
   isFullAccess = false,
   upgradeUrl = "https://nexo-ai.world",
   onTitleChange,
-  onRecordToggle,
   onToggleClips,
 }: HeaderProps) {
   const [editing, setEditing] = useState(false);
@@ -91,24 +87,6 @@ export function Header({
           Upgrade
         </a>
       )}
-
-      <div className="flex items-center gap-2 px-2">
-        <button
-          type="button"
-          onClick={onRecordToggle}
-          aria-pressed={recordEnabled}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-            recordEnabled ? "bg-accent" : "bg-surface-high"
-          }`}
-        >
-          <span
-            className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
-              recordEnabled ? "translate-x-5" : "translate-x-0.5"
-            }`}
-          />
-        </button>
-        <span className="text-xs font-medium text-text-secondary">Record</span>
-      </div>
 
       {/* NexoClip connection switch — when ON, streams flow to NexoClip and
           clips are generated. Only full-access users can flip it on. */}
