@@ -8,10 +8,11 @@ import { ChannelsPanel } from "@/components/ChannelsPanel";
 import { Footer } from "@/components/Footer";
 import { buildIngest } from "@/lib/ingest";
 import { StreamPreview } from "@/components/StreamPreview";
-import { DestinationConfig, PlatformId } from "@/lib/destinations";
+import { BroadcastMeta, DestinationConfig, PlatformId } from "@/lib/destinations";
 import { ChannelPatch } from "@/components/ChannelEditModal";
 import {
   addDestinationAction,
+  publishBroadcastAction,
   regenerateKeyAction,
   removeDestinationAction,
   setClipsEnabledAction,
@@ -20,7 +21,6 @@ import {
   toggleLiveAction,
   toggleRecordAction,
   updateDestinationAction,
-  updateTitlesAction,
 } from "./actions";
 
 type Dest = DestinationConfig & { id: string };
@@ -31,9 +31,11 @@ interface Props {
   initialRecord: boolean;
   initialClips: boolean;
   initialStreamKey: string;
+  initialBroadcastMeta: BroadcastMeta;
   relayRtmp: string;
   previewEnabled: boolean;
   isFullAccess: boolean;
+  upgradeUrl: string;
   destinations: Dest[];
 }
 
@@ -48,9 +50,11 @@ export function DashboardClient({
   initialRecord,
   initialClips,
   initialStreamKey,
+  initialBroadcastMeta,
   relayRtmp,
   previewEnabled,
   isFullAccess,
+  upgradeUrl,
   destinations,
 }: Props) {
   const router = useRouter();
@@ -59,6 +63,7 @@ export function DashboardClient({
   const [recordEnabled, setRecordEnabled] = useState(initialRecord);
   const [clipsEnabled, setClipsEnabled] = useState(initialClips);
   const [streamKey, setStreamKey] = useState(initialStreamKey);
+  const [broadcastMeta, setBroadcastMeta] = useState(initialBroadcastMeta);
   const [pending, startTransition] = useTransition();
 
   // Destinations are server-authoritative (props). useOptimistic gives a
@@ -90,6 +95,8 @@ export function DashboardClient({
         recordEnabled={recordEnabled}
         onTitleChange={(next) => {
           setTitle(next);
+          // Keep the composer's title field in sync with the header edit.
+          setBroadcastMeta((m) => ({ ...m, title: next }));
           startTransition(() => setTitleAction(next));
         }}
         onRecordToggle={() => {
@@ -99,6 +106,8 @@ export function DashboardClient({
         }}
         clipsEnabled={clipsEnabled}
         clipsAvailable={isFullAccess}
+        isFullAccess={isFullAccess}
+        upgradeUrl={upgradeUrl}
         onToggleClips={() => {
           // On/off switch for the NexoClip connection. When ON, NexoOBS
           // forwards each stream's lifecycle to NexoClip and clips flow.
@@ -133,6 +142,7 @@ export function DashboardClient({
           </div>
           <ChannelsPanel
             destinations={optimistic}
+            broadcastMeta={broadcastMeta}
             busy={pending}
             onToggle={(id) => {
               startTransition(async () => {
@@ -147,10 +157,13 @@ export function DashboardClient({
                 router.refresh();
               });
             }}
-            onUpdateTitles={() => {
+            onPublishBroadcast={(meta) => {
+              const nextTitle = meta.title.trim() || title;
+              setTitle(nextTitle);
+              setBroadcastMeta(meta);
               startTransition(async () => {
-                applyOptimistic({ type: "titles", title });
-                await updateTitlesAction(title);
+                applyOptimistic({ type: "titles", title: nextTitle });
+                await publishBroadcastAction(meta);
                 router.refresh();
               });
             }}
@@ -170,18 +183,21 @@ export function DashboardClient({
           />
         </div>
 
-        <div className="mt-6 flex justify-center">
-          <button
-            onClick={() => {
-              const next = !isLive;
-              setIsLive(next);
-              startTransition(() => toggleLiveAction(next));
-            }}
-            className="text-[10px] tracking-widest font-bold text-text-tertiary hover:text-text-primary px-3 py-1.5 rounded border border-border bg-surface"
-          >
-            DEV · TOGGLE {isLive ? "OFFLINE" : "LIVE"}
-          </button>
-        </div>
+        {/* Dev-only helper — never shipped to users. */}
+        {process.env.NODE_ENV !== "production" && (
+          <div className="mt-6 flex justify-center">
+            <button
+              onClick={() => {
+                const next = !isLive;
+                setIsLive(next);
+                startTransition(() => toggleLiveAction(next));
+              }}
+              className="text-[10px] tracking-widest font-bold text-text-tertiary hover:text-text-primary px-3 py-1.5 rounded border border-border bg-surface"
+            >
+              DEV · TOGGLE {isLive ? "OFFLINE" : "LIVE"}
+            </button>
+          </div>
+        )}
       </main>
 
       <Footer />

@@ -1,17 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { IngestCredentials } from "@/lib/ingest";
 import { CopyIcon, RefreshIcon } from "./icons";
-
-type Protocol = "rtmp" | "rtmps" | "srt" | "whip";
-
-const TABS: { id: Protocol; label: string; badge?: string }[] = [
-  { id: "rtmp", label: "RTMP" },
-  { id: "rtmps", label: "RTMPS" },
-  { id: "srt", label: "SRT" },
-  { id: "whip", label: "WHIP", badge: "BETA" },
-];
 
 interface EncoderPanelProps {
   ingest: IngestCredentials;
@@ -22,29 +13,19 @@ interface EncoderPanelProps {
   embedded?: boolean;
 }
 
+/**
+ * Encoder credentials card. RTMP only — that's the protocol the relay
+ * actually ingests (MediaMTX rtmp:1935 behind Railway's TCP proxy; SRT and
+ * WebRTC ride UDP, which the proxy can't carry). No fake protocol tabs.
+ */
 export function EncoderPanel({
   ingest,
   isLive,
   onRegenerateKey,
   embedded = false,
 }: EncoderPanelProps) {
-  const [protocol, setProtocol] = useState<Protocol>("rtmp");
   const [keyVisible, setKeyVisible] = useState(false);
-
-  const url = useMemo(() => {
-    switch (protocol) {
-      case "rtmp":
-        return ingest.rtmpUrl;
-      case "rtmps":
-        return ingest.rtmpsUrl;
-      case "srt":
-        return ingest.srtUrl;
-      case "whip":
-        return ingest.whipUrl;
-    }
-  }, [protocol, ingest]);
-
-  const showKeyField = protocol !== "srt"; // SRT carries the key in streamid
+  const [guideOpen, setGuideOpen] = useState(false);
 
   return (
     <section
@@ -76,77 +57,67 @@ export function EncoderPanel({
         </p>
       </div>
 
-      <div
-        role="tablist"
-        className={`inline-flex p-1 rounded-lg bg-surface-elevated border border-border ${
-          embedded ? "mb-4" : "mb-5"
-        }`}
-      >
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            role="tab"
-            aria-selected={protocol === t.id}
-            onClick={() => setProtocol(t.id)}
-            className={`px-3.5 py-1.5 text-xs font-bold tracking-wider rounded-md transition flex items-center gap-1.5 ${
-              protocol === t.id
-                ? "bg-bg text-text-primary"
-                : "text-text-tertiary hover:text-text-secondary"
-            }`}
-          >
-            {t.label}
-            {t.badge && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-accent-soft text-accent border border-accent/30">
-                {t.badge}
-              </span>
-            )}
-          </button>
-        ))}
+      <Field label="RTMP URL" value={ingest.rtmpUrl} />
+
+      <div className="mt-3">
+        <Field
+          label="Stream key"
+          value={ingest.streamKey}
+          secret
+          visible={keyVisible}
+          onToggleVisible={() => setKeyVisible((v) => !v)}
+          onRegenerate={onRegenerateKey}
+        />
       </div>
 
-      <Field label={`${protocol.toUpperCase()} URL`} value={url} />
-
-      {showKeyField && (
-        <div className="mt-3">
-          <Field
-            label="Stream key"
-            value={ingest.streamKey}
-            secret
-            visible={keyVisible}
-            onToggleVisible={() => setKeyVisible((v) => !v)}
-            onRegenerate={onRegenerateKey}
-          />
-        </div>
-      )}
-
-      {protocol === "rtmp" && (
-        <div className="mt-3">
-          <Field label="URL completa (cámaras de un solo campo)" value={ingest.fullRtmpUrl} />
-          <p className="text-[10px] text-text-tertiary mt-1.5 leading-relaxed">
-            Para DJI Osmo / Mimo, GoPro o el teléfono — que solo tienen un campo
-            de URL — pega esta. Ya incluye tu stream key.
-          </p>
-        </div>
-      )}
-
-      <div
-        className={`${embedded ? "mt-4" : "mt-5"} rounded-lg bg-accent-soft/40 border border-accent/30 p-3 flex items-center justify-between gap-3`}
-      >
-        <p className="text-xs text-text-secondary">
-          ¿Evento importante?{" "}
-          <button className="text-accent font-semibold hover:underline">
-            Get backup stream
-          </button>
+      <div className="mt-3">
+        <Field label="URL completa (cámaras de un solo campo)" value={ingest.fullRtmpUrl} />
+        <p className="text-[10px] text-text-tertiary mt-1.5 leading-relaxed">
+          Para DJI Osmo / Mimo, GoPro o el teléfono — que solo tienen un campo
+          de URL — pega esta. Ya incluye tu stream key.
         </p>
-        <button className="text-text-tertiary hover:text-text-primary text-lg leading-none">
-          ×
-        </button>
       </div>
 
-      <div className="mt-4 text-center">
-        <button className="text-xs text-accent hover:underline font-medium">
-          ▶ Cómo conectar OBS, Zoom, vMix
+      <div className={embedded ? "mt-4" : "mt-5"}>
+        <button
+          type="button"
+          onClick={() => setGuideOpen((v) => !v)}
+          aria-expanded={guideOpen}
+          className="w-full text-center text-xs text-accent hover:underline font-medium"
+        >
+          {guideOpen ? "▾" : "▸"} Cómo conectar OBS, Zoom, vMix
         </button>
+        {guideOpen && (
+          <div className="mt-3 rounded-lg bg-surface-elevated border border-border p-4 text-left">
+            <ol className="space-y-2.5 text-[11px] text-text-secondary leading-relaxed list-decimal list-inside">
+              <li>
+                <b className="text-text-primary">OBS Studio:</b> Ajustes →
+                Transmisión → Servicio:{" "}
+                <code className="font-mono">Personalizado</code> → pega la{" "}
+                <b>RTMP URL</b> en «Servidor» y el <b>stream key</b> en «Clave
+                de retransmisión» → Iniciar transmisión.
+              </li>
+              <li>
+                <b className="text-text-primary">vMix:</b> Settings → Streaming
+                → Destination: <code className="font-mono">Custom RTMP
+                Server</code> → URL + Stream Name or Key → Start.
+              </li>
+              <li>
+                <b className="text-text-primary">Zoom:</b> requiere plan con
+                «Custom Live Streaming»: en la reunión → Más → Transmitir en
+                vivo en servicio personalizado → pega URL y key.
+              </li>
+              <li>
+                <b className="text-text-primary">Osmo / GoPro / teléfono:</b>{" "}
+                usa la <b>URL completa</b> de arriba (un solo campo).
+              </li>
+            </ol>
+            <p className="mt-3 text-[10px] text-text-tertiary">
+              Al conectar, el preview aparece aquí en unos segundos y tu señal
+              se reenvía a todos los canales activos.
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );

@@ -7,6 +7,9 @@
  * (e.g. rtmp://acela.proxy.rlwy.net:26151/live), NOT the HTTP custom
  * domain (ingest.nexo-ai.world only carries HTTP, not RTMP on 1935).
  *
+ * RTMP only: MediaMTX has SRT/WebRTC off and Railway's TCP proxy can't
+ * carry UDP, so we don't advertise endpoints that wouldn't connect.
+ *
  * Set NEXOOBS_RELAY_RTMP_URL to that base. The value is read server-side
  * and passed into the client, so it never hardcodes a proxy port that can
  * change.
@@ -18,9 +21,6 @@ export interface IngestCredentials {
   /** Single-field encoders (DJI Osmo / Mimo, GoPro, phones): server + key
    *  combined into one URL. */
   fullRtmpUrl: string;
-  rtmpsUrl: string;
-  srtUrl: string;
-  whipUrl: string;
   streamKey: string;
 }
 
@@ -32,15 +32,9 @@ export function buildIngest(
   relayRtmp: string = DEFAULT_RELAY_RTMP,
 ): IngestCredentials {
   const base = relayRtmp.replace(/\/+$/, "");
-  // Derive the host (without scheme) for the SRT/WHIP hints. These are
-  // best-effort — the RTMP path is the one that's actually wired.
-  const host = base.replace(/^rtmps?:\/\//, "").split("/")[0] ?? "";
   return {
     rtmpUrl: base,
     fullRtmpUrl: `${base}/${streamKey}`,
-    rtmpsUrl: base.replace(/^rtmp:/, "rtmps:"),
-    srtUrl: `srt://${host}?streamid=publish:${streamKey}`,
-    whipUrl: `https://${host}/whip`,
     streamKey,
   };
 }

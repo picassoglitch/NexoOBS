@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/server-session";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { getDestinations, getOrCreateSession } from "@/lib/data";
+import { isFullAccessTier } from "@/lib/tier";
 import { DashboardClient } from "./DashboardClient";
 
 // Per-tenant data — never cache across requests.
@@ -41,9 +42,13 @@ export default async function DashboardPage() {
   // Preview is available when the relay's private HLS address is set; the
   // player then pulls from the authenticated same-origin proxy.
   const previewEnabled = Boolean(process.env.NEXOOBS_RELAY_INTERNAL_HLS);
-  // The NexoClip connection switch is full-access only. SSO tier arrives
-  // lowercased ('all_access').
-  const isFullAccess = (session.tier ?? "").toLowerCase() === "all_access";
+  // The NexoClip connection switch is full-access only (ALL_ACCESS or
+  // PARTNER). Definition lives in @/lib/tier so the server-side gate matches.
+  const isFullAccess = isFullAccessTier(session.tier);
+  // Upgrade lands on Nexo-AI World (plans live there, not in NexoOBS).
+  const upgradeUrl = (
+    process.env.NEXO_AI_LOGIN_URL ?? "https://nexo-ai.world/login"
+  ).replace(/\/login\/?$/, "");
 
   return (
     <DashboardClient
@@ -52,9 +57,11 @@ export default async function DashboardPage() {
       initialRecord={tenantSession.recordEnabled}
       initialClips={tenantSession.clipsEnabled}
       initialStreamKey={tenantSession.streamKey}
+      initialBroadcastMeta={tenantSession.broadcastMeta}
       relayRtmp={relayRtmp}
       previewEnabled={previewEnabled}
       isFullAccess={isFullAccess}
+      upgradeUrl={upgradeUrl}
       destinations={destinations}
     />
   );

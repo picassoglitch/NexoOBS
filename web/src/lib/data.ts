@@ -1,8 +1,10 @@
 import "server-only";
 import { getSupabaseAdmin } from "./supabase";
 import {
+  BroadcastMeta,
   DestinationConfig,
   DestinationStatus,
+  normalizeBroadcastMeta,
   PLATFORM_META,
   PlatformId,
 } from "./destinations";
@@ -23,6 +25,8 @@ export interface TenantSession {
   recordEnabled: boolean;
   clipsEnabled: boolean;
   streamKey: string;
+  /** Full broadcast-metadata composer state (title/description/category/…). */
+  broadcastMeta: BroadcastMeta;
 }
 
 const DEFAULT_TITLE = "Mi transmisión en vivo";
@@ -46,17 +50,21 @@ export async function getOrCreateSession(
   const db = getSupabaseAdmin();
   const { data } = await db
     .from("nexoobs_sessions")
-    .select("title, is_live, record_enabled, clips_enabled, stream_key")
+    .select(
+      "title, is_live, record_enabled, clips_enabled, stream_key, broadcast_meta",
+    )
     .eq("tenant_id", tenantId)
     .maybeSingle();
 
   if (data) {
+    const title = data.title as string;
     return {
-      title: data.title as string,
+      title,
       isLive: data.is_live as boolean,
       recordEnabled: data.record_enabled as boolean,
       clipsEnabled: (data.clips_enabled as boolean | null) ?? true,
       streamKey: data.stream_key as string,
+      broadcastMeta: normalizeBroadcastMeta(data.broadcast_meta, title),
     };
   }
 
@@ -66,6 +74,7 @@ export async function getOrCreateSession(
     recordEnabled: true,
     clipsEnabled: true,
     streamKey: freshStreamKey(),
+    broadcastMeta: normalizeBroadcastMeta(null, DEFAULT_TITLE),
   };
   await db.from("nexoobs_sessions").insert({
     tenant_id: tenantId,
@@ -74,6 +83,7 @@ export async function getOrCreateSession(
     record_enabled: fresh.recordEnabled,
     clips_enabled: fresh.clipsEnabled,
     stream_key: fresh.streamKey,
+    broadcast_meta: fresh.broadcastMeta,
   });
   return fresh;
 }
@@ -124,6 +134,7 @@ export async function updateSession(
   if (patch.recordEnabled !== undefined) row.record_enabled = patch.recordEnabled;
   if (patch.clipsEnabled !== undefined) row.clips_enabled = patch.clipsEnabled;
   if (patch.streamKey !== undefined) row.stream_key = patch.streamKey;
+  if (patch.broadcastMeta !== undefined) row.broadcast_meta = patch.broadcastMeta;
   await db.from("nexoobs_sessions").update(row).eq("tenant_id", tenantId);
 }
 
@@ -268,14 +279,32 @@ export async function toggleDestination(
     .eq("id", id);
 }
 
-export async function updateAllTitles(
+/** Persist the full broadcast-metadata composer state for a tenant, then mirror
+ *  the (sanitized) title onto the session and every destination so the relay
+ *  fan-out and the channel-row UI stay in sync. The non-title fields live in
+ *  the session's broadcast_meta blob; each platform consumes the subset it
+ *  supports (see PLATFORM_FIELD_SUPPORT) at publish time. */
+export async function publishBroadcastMeta(
   tenantId: string,
-  title: string,
+  meta: BroadcastMeta,
 ): Promise<void> {
   const db = getSupabaseAdmin();
+  const title = meta.title.trim() || DEFAULT_TITLE;
+  const clean: BroadcastMeta = {
+    ...meta,
+    title,
+    description: meta.description.trim(),
+    category: meta.category.trim(),
+    tags: meta.tags.map((t) => t.trim()).filter((t) => t.length > 0),
+  };
+  const now = new Date().toISOString();
+  await db
+    .from("nexoobs_sessions")
+    .update({ title, broadcast_meta: clean, updated_at: now })
+    .eq("tenant_id", tenantId);
   await db
     .from("nexoobs_destinations")
-    .update({ stream_title: title, updated_at: new Date().toISOString() })
+    .update({ stream_title: title, updated_at: now })
     .eq("tenant_id", tenantId);
 }
 
@@ -336,8 +365,8 @@ export function tenantFromStreamId(streamId: string): string | null {
 }
 
 /** Fan-out targets for the relay: enabled + fully-configured destinations,
- *  each as a complete RTMP push URL (ingest + key) the relay feeds to
- *  `ffmpeg -c copy -f flv`. */
+ *  each as a complete push URL the relay feeds to `ffmpeg -c copy`
+ *  (rtmp/rtmps → flv muxer, srt → mpegts — the relay picks by scheme). */
 export async function getFanoutDestinations(
   tenantId: string,
 ): Promise<{ platform: string; push_url: string }[]> {
@@ -354,10 +383,18 @@ export async function getFanoutDestinations(
         ((r.stream_key as string) ?? "").trim().length > 0,
     )
     .map((r) => {
-      const base = (r.ingest_url as string).replace(/\/+$/, "");
+      const base = (r.ingest_url as string).trim().replace(/\/+$/, "");
+      const key = (r.stream_key as string).trim();
+      // SRT carries the credential as ?streamid=..., not as a path
+      // segment. If the user's URL already embeds it, it's complete as-is.
+      const pushUrl = base.startsWith("srt://")
+        ? base.includes("streamid=")
+          ? base
+          : `${base}${base.includes("?") ? "&" : "?"}streamid=${key}`
+        : `${base}/${key}`;
       return {
         platform: r.platform_id as string,
-        push_url: `${base}/${r.stream_key as string}`,
+        push_url: pushUrl,
       };
     });
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { HomeIcon, ClipsIcon, ChevronDownIcon } from "./icons";
 
 interface HeaderProps {
@@ -11,6 +12,10 @@ interface HeaderProps {
   clipsEnabled?: boolean;
   /** Whether the connection switch can be toggled (full access only). */
   clipsAvailable?: boolean;
+  /** Full-access tenants don't see the Upgrade button. */
+  isFullAccess?: boolean;
+  /** Where Upgrade sends the user (Nexo-AI World). */
+  upgradeUrl?: string;
   onTitleChange: (next: string) => void;
   onRecordToggle: () => void;
   onToggleClips: () => void;
@@ -22,6 +27,8 @@ export function Header({
   recordEnabled,
   clipsEnabled,
   clipsAvailable = true,
+  isFullAccess = false,
+  upgradeUrl = "https://nexo-ai.world",
   onTitleChange,
   onRecordToggle,
   onToggleClips,
@@ -31,13 +38,13 @@ export function Header({
 
   return (
     <header className="flex items-center gap-3 px-4 py-3 border-b border-border bg-bg sticky top-0 z-10">
-      <button
-        type="button"
+      <Link
+        href="/dashboard"
         className="w-10 h-10 rounded-lg bg-surface border border-border flex items-center justify-center text-text-secondary hover:text-text-primary transition"
         aria-label="Home"
       >
         <HomeIcon className="w-5 h-5" />
-      </button>
+      </Link>
 
       <div className="flex-1 flex items-center gap-2 min-w-0">
         {editing ? (
@@ -73,12 +80,17 @@ export function Header({
         )}
       </div>
 
-      <button
-        type="button"
-        className="px-3.5 py-1.5 text-xs font-semibold rounded-md bg-accent-soft text-accent border border-accent/40 hover:bg-accent/20 transition"
-      >
-        Upgrade
-      </button>
+      {/* Full access already has everything — no upsell to show. */}
+      {!isFullAccess && (
+        <a
+          href={upgradeUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-3.5 py-1.5 text-xs font-semibold rounded-md bg-accent-soft text-accent border border-accent/40 hover:bg-accent/20 transition"
+        >
+          Upgrade
+        </a>
+      )}
 
       <div className="flex items-center gap-2 px-2">
         <button

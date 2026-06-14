@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   avatarInitial,
+  BroadcastMeta,
   DestinationConfig,
   DestinationStatus,
   PLATFORM_META,
@@ -14,10 +15,10 @@ import {
   BroadcastIcon,
   ChatIcon,
   EditIcon,
-  MonitorIcon,
   PlusIcon,
 } from "./icons";
 import { ChannelEditModal, ChannelPatch } from "./ChannelEditModal";
+import { BroadcastComposerModal } from "./BroadcastComposerModal";
 
 type Dest = DestinationConfig & { id: string };
 
@@ -27,9 +28,10 @@ function isConfigured(d: Dest): boolean {
 
 interface ChannelsPanelProps {
   destinations: Dest[];
+  broadcastMeta: BroadcastMeta;
   onToggle: (id: string) => void;
   onAddChannel: (platformId: PlatformId) => void;
-  onUpdateTitles: () => void;
+  onPublishBroadcast: (meta: BroadcastMeta) => void;
   onRemove: (id: string) => void;
   onSaveDestination: (id: string, patch: ChannelPatch) => void;
   busy?: boolean;
@@ -40,6 +42,7 @@ type Tab = "channels" | "chat";
 export function ChannelsPanel(props: ChannelsPanelProps) {
   const [tab, setTab] = useState<Tab>("channels");
   const [editing, setEditing] = useState<Dest | null>(null);
+  const [composing, setComposing] = useState(false);
   const activeCount = props.destinations.filter((d) => d.enabled).length;
 
   return (
@@ -66,7 +69,7 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
           destinations={props.destinations}
           onToggle={props.onToggle}
           onAddChannel={props.onAddChannel}
-          onUpdateTitles={props.onUpdateTitles}
+          onUpdateTitles={() => setComposing(true)}
           onRemove={props.onRemove}
           onEdit={setEditing}
           busy={props.busy}
@@ -83,6 +86,19 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
           onSave={(patch) => {
             props.onSaveDestination(editing.id, patch);
             setEditing(null);
+          }}
+        />
+      )}
+
+      {composing && (
+        <BroadcastComposerModal
+          meta={props.broadcastMeta}
+          destinations={props.destinations}
+          busy={props.busy}
+          onClose={() => setComposing(false)}
+          onPublish={(meta) => {
+            props.onPublishBroadcast(meta);
+            setComposing(false);
           }}
         />
       )}
@@ -150,9 +166,6 @@ function ChannelsTab({
     <div className="flex flex-col flex-1">
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <h3 className="text-sm font-bold">Your Channels</h3>
-        <button className="text-xs text-text-secondary hover:text-text-primary font-medium">
-          Paired Channels →
-        </button>
       </div>
 
       <div className="grid grid-cols-2 gap-2 px-4 relative">

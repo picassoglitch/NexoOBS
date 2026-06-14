@@ -234,8 +234,9 @@ function keyHint(p: PlatformId): string {
     case "facebook":
       return "Facebook Live Producer → usar clave de transmisión persistente.";
     case "custom_rtmp":
-    case "custom_srt":
       return "La clave/credencial que te dé tu servidor de destino.";
+    case "custom_srt":
+      return "El streamid de tu servidor SRT (lo añadimos como ?streamid=... a la URL). Si tu URL ya lo incluye, pégalo igual aquí.";
     default:
       return "Pega el stream key que te da la plataforma.";
   }
